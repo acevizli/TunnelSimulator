@@ -253,6 +253,41 @@
             },
             "type": "array",
             "title": "Error M"
+          },
+          "wrong_branch": {
+            "items": {
+              "type": "boolean"
+            },
+            "type": "array",
+            "title": "Wrong Branch"
+          },
+          "x_m": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "X M"
+          },
+          "y_m": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Y M"
           }
         },
         "type": "object",
@@ -262,7 +297,10 @@
           "s_m",
           "v_mps",
           "sigma_m",
-          "error_m"
+          "error_m",
+          "wrong_branch",
+          "x_m",
+          "y_m"
         ],
         "title": "EstimateTrack"
       },
@@ -754,6 +792,44 @@
         "title": "OpenRoad",
         "description": "Driving with good GPS before and after the tunnel."
       },
+      "PathShape": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "x_m": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "X M"
+          },
+          "y_m": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Y M"
+          },
+          "tunnel": {
+            "items": {
+              "type": "boolean"
+            },
+            "type": "array",
+            "title": "Tunnel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "x_m",
+          "y_m",
+          "tunnel"
+        ],
+        "title": "PathShape",
+        "description": "One path seen from above, every few metres, for the map view."
+      },
       "Road": {
         "properties": {
           "main": {
@@ -826,6 +902,13 @@
             "type": "array",
             "title": "Tunnels"
           },
+          "shapes": {
+            "items": {
+              "$ref": "#/components/schemas/PathShape"
+            },
+            "type": "array",
+            "title": "Shapes"
+          },
           "exits": {
             "items": {
               "$ref": "#/components/schemas/ExitMark"
@@ -861,6 +944,20 @@
             "type": "array",
             "title": "Truth Height M"
           },
+          "truth_x_m": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Truth X M"
+          },
+          "truth_y_m": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Truth Y M"
+          },
           "gps": {
             "items": {
               "$ref": "#/components/schemas/GpsPoint"
@@ -886,11 +983,14 @@
           "path",
           "path_length_m",
           "tunnels",
+          "shapes",
           "exits",
           "t_s",
           "truth_s_m",
           "truth_v_mps",
           "truth_height_m",
+          "truth_x_m",
+          "truth_y_m",
           "gps",
           "sensors",
           "estimates"

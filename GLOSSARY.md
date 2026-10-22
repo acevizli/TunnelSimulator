@@ -65,7 +65,7 @@ The estimator's belief about the car's along-track distance and speed, always pa
 _Avoid_: Prediction, guess
 
 **Along-track error**:
-The estimate's along-track distance minus the ground truth's; positive when the estimate is ahead of the car.
+The estimate's along-track distance minus the ground truth's; positive when the estimate is ahead of the car. When the estimate is on a different branch from the car, both past the split, it is the distance between them along the road (back to the split and out the other branch), counted as positive.
 _Avoid_: Position error, drift
 
 **Uncertainty band**:

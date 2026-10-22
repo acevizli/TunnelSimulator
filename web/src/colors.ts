@@ -1,5 +1,6 @@
 export const TRUTH_COLOR = "#1f2937";
 export const GPS_COLOR = "#2563eb";
+export const ROUTE_COLOR = "#059669";
 const ESTIMATOR_COLORS: Record<string, string> = { baseline: "#ea580c", "map filter": "#7c3aed" };
 export const estimatorColor = (name: string) => ESTIMATOR_COLORS[name] ?? "#0891b2";
 

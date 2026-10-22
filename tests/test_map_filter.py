@@ -91,3 +91,14 @@ def test_stop_detection_holds_the_speed_at_zero_while_stopped():
     stopped = (np.array(run.truth_v_mps) == 0) & in_tunnel(run)
     assert stopped.sum() > 100
     assert np.mean(np.array(map_filter(run).v_mps, dtype=float)[stopped] < 0.3) > 0.9
+
+
+def test_an_estimate_on_the_wrong_branch_counts_its_distance_along_the_road():
+    run = scenario_run(MISSED_EXIT)
+    split = next(e.at_m for e in run.exits if e.planned)
+    baseline = run.estimates[0]
+    i = next(i for i, wrong in enumerate(baseline.wrong_branch) if wrong and run.truth_s_m[i] > split + 1000)
+    # Baseline believes the route: it is on "Fork right" while the car stays on main.
+    assert baseline.path[i] == "Fork right"
+    expected = (baseline.s_m[i] - split) + (run.truth_s_m[i] - split)
+    assert baseline.error_m[i] == pytest.approx(expected) and expected > 1500

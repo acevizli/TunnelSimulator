@@ -19,3 +19,5 @@ header select { font-size: 16px; font-weight: 600; }
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
 th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #e5e7eb; }
 th { color: #374151; font-weight: 600; }
+.maps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 760px) { .maps { grid-template-columns: 1fr; } }

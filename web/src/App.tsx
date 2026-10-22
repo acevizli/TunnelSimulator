@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { computeRun, fetchScenarios, type Run, type Scenario } from "./api";
 import { TRUTH_COLOR, bandColor, estimatorColor } from "./colors";
+import MapView from "./MapView";
 import RoadStrip from "./RoadStrip";
 import SensorPanel from "./SensorPanel";
 import TimePlot, { type Line } from "./TimePlot";
@@ -38,6 +39,11 @@ export default function App() {
       { name: `${e.estimator} band (±2σ)`, y: e.sigma_m.map((s) => s == null ? null : 2 * s), color: bandColor(e.estimator), band: "upper" },
     ]),
     ...run.estimates.map((e) => ({ name: e.estimator, y: e.error_m, color: estimatorColor(e.estimator) })),
+    // Thick dots over the stretches an estimator spends on a branch the car isn't driving
+    ...run.estimates.filter((e) => e.wrong_branch.some(Boolean)).map((e): Line => ({
+      name: `${e.estimator} on the wrong branch`, y: e.error_m.map((v, i) => (e.wrong_branch[i] ? v : null)),
+      color: estimatorColor(e.estimator), dash: "dot", width: 6,
+    })),
   ] : [], [run]);
   const speedLines = useMemo<Line[]>(() => run ? [
     { name: "ground truth", y: run.truth_v_mps.map((v) => v * 3.6), color: TRUTH_COLOR },
@@ -71,6 +77,11 @@ export default function App() {
         <Legend run={run} />
       </section>
 
+      <section className="panel maps">
+        <div><h2>Map, from above</h2><MapView run={run} frame={frame} /></div>
+        <div><h2>Close-up, ±300 m around the true car</h2><MapView run={run} frame={frame} aroundCarM={300} /></div>
+      </section>
+
       <section className="controls">
         <button onClick={() => setPlaying(!playing)}>{playing ? "Pause" : "Play"}</button>
         <input type="range" min={0} max={run.t_s.length - 1} value={frame}
@@ -84,7 +95,7 @@ export default function App() {
             const err = e.error_m[frame];
             const sigma = e.sigma_m[frame];
             const onPath = e.path[frame];
-            const wrong = onPath != null && onPath !== run.path ? ` (thinks: ${onPath})` : "";
+            const wrong = e.wrong_branch[frame] ? ` — on the wrong branch (${onPath})` : "";
             const band = sigma == null ? "" : ` (band ±${(2 * sigma).toFixed(0)} m)`;
             return <span key={e.estimator}> · {e.estimator} error {err == null ? "–" : `${err.toFixed(1)} m`}{band}{wrong}</span>;
           })}

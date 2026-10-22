@@ -144,6 +144,12 @@ export interface components {
             sigma_m: (number | null)[];
             /** Error M */
             error_m: (number | null)[];
+            /** Wrong Branch */
+            wrong_branch: boolean[];
+            /** X M */
+            x_m: (number | null)[];
+            /** Y M */
+            y_m: (number | null)[];
         };
         /** Exit */
         Exit: {
@@ -502,6 +508,20 @@ export interface components {
              */
             after_m: number;
         };
+        /**
+         * PathShape
+         * @description One path seen from above, every few metres, for the map view.
+         */
+        PathShape: {
+            /** Name */
+            name: string;
+            /** X M */
+            x_m: number[];
+            /** Y M */
+            y_m: number[];
+            /** Tunnel */
+            tunnel: boolean[];
+        };
         /** Road */
         Road: {
             /** Main */
@@ -539,6 +559,8 @@ export interface components {
             path_length_m: number;
             /** Tunnels */
             tunnels: components["schemas"]["Span"][];
+            /** Shapes */
+            shapes: components["schemas"]["PathShape"][];
             /** Exits */
             exits: components["schemas"]["ExitMark"][];
             /** T S */
@@ -549,6 +571,10 @@ export interface components {
             truth_v_mps: number[];
             /** Truth Height M */
             truth_height_m: number[];
+            /** Truth X M */
+            truth_x_m: number[];
+            /** Truth Y M */
+            truth_y_m: number[];
             /** Gps */
             gps: components["schemas"]["GpsPoint"][];
             sensors: components["schemas"]["SensorTraces"];

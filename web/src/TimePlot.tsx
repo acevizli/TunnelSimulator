@@ -3,7 +3,9 @@ import Plotly from "plotly.js-dist-min";
 import type { Run } from "./api";
 
 // A band is drawn as two lines: its "lower" edge (invisible) and its "upper" edge, shaded down to the lower one.
-export type Line = { name: string; y: (number | null)[]; color: string; dash?: "dot" | "solid"; band?: "lower" | "upper" };
+export type Line = {
+  name: string; y: (number | null)[]; color: string; dash?: "dot" | "solid"; width?: number; band?: "lower" | "upper";
+};
 type Props = { run: Run; frame: number; lines: Line[]; yTitle: string };
 
 // Quantities over time; shaded areas are the times the true car is inside a tunnel.
@@ -13,7 +15,7 @@ export default function TimePlot({ run, frame, lines, yTitle }: Props) {
   useEffect(() => {
     const traces = lines.map((line) => ({
       x: run.t_s, y: line.y, name: line.name, mode: "lines" as const,
-      line: { color: line.color, width: line.band ? 0 : 2, dash: line.dash ?? "solid" },
+      line: { color: line.color, width: line.band ? 0 : line.width ?? 2, dash: line.dash ?? "solid" },
       ...(line.band && { hoverinfo: "skip" as const, showlegend: line.band === "upper" }),
       ...(line.band === "upper" && { fill: "tonexty" as const, fillcolor: line.color }),
     }));
