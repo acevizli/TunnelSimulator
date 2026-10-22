@@ -1,0 +1,10 @@
+[project]
+name = "tunnelsim"
+version = "0.1.0"
+description = "Simulation core: road, car motion, sensors, estimators and evaluation. No UI code."
+requires-python = ">=3.12"
+dependencies = ["numpy>=2.0", "pydantic>=2.7"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

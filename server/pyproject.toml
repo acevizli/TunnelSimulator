@@ -1,0 +1,13 @@
+[project]
+name = "tunnelsim-server"
+version = "0.1.0"
+description = "Thin HTTP layer over the tunnelsim core. No simulation logic lives here."
+requires-python = ">=3.12"
+dependencies = ["tunnelsim", "fastapi>=0.115", "uvicorn>=0.30"]
+
+[tool.uv.sources]
+tunnelsim = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
