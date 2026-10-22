@@ -104,7 +104,8 @@ class Path:
         return np.interp(s, self.s, table)
 
     def in_tunnel(self, s: np.ndarray | float) -> np.ndarray:
-        i = np.clip(np.round(np.asarray(s) / STEP_M).astype(int), 0, len(self.s) - 1)
+        # Rounded down, so this agrees exactly with tunnel_spans(): start <= s < end.
+        i = np.clip(np.floor(np.asarray(s) / STEP_M).astype(int), 0, len(self.s) - 1)
         return self.tunnel[i]
 
     def tunnel_spans(self) -> list[Span]:

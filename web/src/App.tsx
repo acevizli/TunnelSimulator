@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { computeRun, fetchScenarios, type Run, type Scenario } from "./api";
-import { TRUTH_COLOR, estimatorColor } from "./colors";
+import { TRUTH_COLOR, bandColor, estimatorColor } from "./colors";
 import RoadStrip from "./RoadStrip";
 import SensorPanel from "./SensorPanel";
 import TimePlot, { type Line } from "./TimePlot";
@@ -31,8 +31,14 @@ export default function App() {
   }, [scenario]);
 
   usePlayback(playing, speed, run, setFrame, () => setPlaying(false));
-  const errorLines = useMemo<Line[]>(() => run ? run.estimates.map((e) =>
-    ({ name: e.estimator, y: e.error_m, color: estimatorColor(e.estimator) })) : [], [run]);
+  // Each estimator's error, over its uncertainty band (±2σ around zero): inside the band = honest
+  const errorLines = useMemo<Line[]>(() => run ? [
+    ...run.estimates.filter((e) => e.sigma_m.some((s) => s != null)).flatMap((e): Line[] => [
+      { name: `${e.estimator} band`, y: e.sigma_m.map((s) => s == null ? null : -2 * s), color: bandColor(e.estimator), band: "lower" },
+      { name: `${e.estimator} band (±2σ)`, y: e.sigma_m.map((s) => s == null ? null : 2 * s), color: bandColor(e.estimator), band: "upper" },
+    ]),
+    ...run.estimates.map((e) => ({ name: e.estimator, y: e.error_m, color: estimatorColor(e.estimator) })),
+  ] : [], [run]);
   const speedLines = useMemo<Line[]>(() => run ? [
     { name: "ground truth", y: run.truth_v_mps.map((v) => v * 3.6), color: TRUTH_COLOR },
     ...run.estimates.map((e) => ({ name: e.estimator, y: e.v_mps.map((v) => v == null ? null : v * 3.6),
@@ -76,9 +82,11 @@ export default function App() {
           t = {t.toFixed(1)} s · truth {truthS.toFixed(0)} m on {run.path} at {(run.truth_v_mps[frame] * 3.6).toFixed(0)} km/h
           {run.estimates.map((e) => {
             const err = e.error_m[frame];
+            const sigma = e.sigma_m[frame];
             const onPath = e.path[frame];
             const wrong = onPath != null && onPath !== run.path ? ` (thinks: ${onPath})` : "";
-            return <span key={e.estimator}> · {e.estimator} error {err == null ? "–" : `${err.toFixed(1)} m`}{wrong}</span>;
+            const band = sigma == null ? "" : ` (band ±${(2 * sigma).toFixed(0)} m)`;
+            return <span key={e.estimator}> · {e.estimator} error {err == null ? "–" : `${err.toFixed(1)} m`}{band}{wrong}</span>;
           })}
         </span>
       </section>

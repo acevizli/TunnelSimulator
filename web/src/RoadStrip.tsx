@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { Run } from "./api";
-import { GPS_COLOR, GPS_PHASE_COLORS, TRUTH_COLOR, estimatorColor } from "./colors";
+import { GPS_COLOR, GPS_PHASE_COLORS, TRUTH_COLOR, bandColor, estimatorColor } from "./colors";
 
 type Props = { run: Run; frame: number; fromM: number; toM: number; label: string };
 
@@ -56,11 +56,16 @@ export default function RoadStrip({ run, frame, fromM, toM, label }: Props) {
       dot(ctx, x(p.s_m), roadY, 3);
     }
 
-    // Estimates: a marker above the road, with a stem down to it
+    // Estimates: a marker above the road, with a stem down to it, inside its uncertainty band (±2σ)
     run.estimates.forEach((track, i) => {
       const s = track.s_m[frame];
       if (s == null) return;
       const top = 20 + i * 10;
+      const sigma = track.sigma_m[frame];
+      if (sigma != null) {
+        ctx.fillStyle = bandColor(track.estimator);
+        ctx.fillRect(x(s - 2 * sigma), top - 4, x(s + 2 * sigma) - x(s - 2 * sigma), 8);
+      }
       ctx.strokeStyle = ctx.fillStyle = estimatorColor(track.estimator);
       ctx.lineWidth = 1.5;
       ctx.beginPath();

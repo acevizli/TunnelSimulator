@@ -1,7 +1,14 @@
 export const TRUTH_COLOR = "#1f2937";
 export const GPS_COLOR = "#2563eb";
-const ESTIMATOR_COLORS: Record<string, string> = { baseline: "#ea580c" };
-export const estimatorColor = (name: string) => ESTIMATOR_COLORS[name] ?? "#7c3aed";
+const ESTIMATOR_COLORS: Record<string, string> = { baseline: "#ea580c", "map filter": "#7c3aed" };
+export const estimatorColor = (name: string) => ESTIMATOR_COLORS[name] ?? "#0891b2";
+
+// The estimator's colour, see-through, for its uncertainty band
+export function bandColor(name: string) {
+  const hex = estimatorColor(name);
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return `rgba(${r}, ${g}, ${b}, 0.18)`;
+}
 
 // GPS fixes by portal phase: blue when trustworthy, warm colours when not
 export const GPS_PHASE_COLORS: Record<string, string> = {

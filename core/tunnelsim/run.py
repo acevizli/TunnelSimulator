@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from tunnelsim.estimators.baseline import Baseline
 from tunnelsim.estimators.estimate import Estimate, Estimator
+from tunnelsim.estimators.map_filter import MapFilter
 from tunnelsim.evaluation import along_track_error
 from tunnelsim.road import Path, Road, Span
 from tunnelsim.scenario import Scenario, build_road
@@ -77,7 +78,7 @@ def run_scenario(scenario: Scenario) -> Run:
     recording = record_drive(truth, scenario.mounting, scenario.gps, scenario.seed)
 
     source = SimulatedSource(recording.samples())
-    estimators: list[Estimator] = [Baseline(road, scenario.planned_path)]
+    estimators: list[Estimator] = [Baseline(road, scenario.planned_path), MapFilter(road, scenario.planned_path)]
     history: dict[str, list[Estimate | None]] = {e.name: [] for e in estimators}
 
     ticks = range(0, len(truth.t_s), round(1 / (OUTPUT_HZ * DT_S)))
