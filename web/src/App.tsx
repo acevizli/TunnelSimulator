@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { computeRun, fetchScenarios, type Run, type Scenario } from "./api";
 import { TRUTH_COLOR, estimatorColor } from "./colors";
-import ErrorPlot from "./ErrorPlot";
 import RoadStrip from "./RoadStrip";
+import TimePlot, { type Line } from "./TimePlot";
 
 const OUTPUT_HZ = 10; // matches the core's recording rate
 const SPEEDS = [1, 5, 10, 25];
 const CLOSE_UP_M = 150;
 
 export default function App() {
+  const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [run, setRun] = useState<Run | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +18,7 @@ export default function App() {
   const [speed, setSpeed] = useState(10);
 
   useEffect(() => {
-    fetchScenarios().then((list) => setScenario(list[0])).catch((e) => setError(String(e)));
+    fetchScenarios().then((list) => { setScenarios(list); setScenario(list[0]); }).catch((e) => setError(String(e)));
   }, []);
 
   useEffect(() => {
@@ -29,6 +30,13 @@ export default function App() {
   }, [scenario]);
 
   usePlayback(playing, speed, run, setFrame, () => setPlaying(false));
+  const errorLines = useMemo<Line[]>(() => run ? run.estimates.map((e) =>
+    ({ name: e.estimator, y: e.error_m, color: estimatorColor(e.estimator) })) : [], [run]);
+  const speedLines = useMemo<Line[]>(() => run ? [
+    { name: "ground truth", y: run.truth_v_mps.map((v) => v * 3.6), color: TRUTH_COLOR },
+    ...run.estimates.map((e) => ({ name: e.estimator, y: e.v_mps.map((v) => v == null ? null : v * 3.6),
+      color: estimatorColor(e.estimator), dash: "dot" as const })),
+  ] : [], [run]);
 
   if (error) return <main><p className="error">{error}</p></main>;
   if (!scenario || !run) return <main><p>Computing run…</p></main>;
@@ -40,13 +48,17 @@ export default function App() {
   return (
     <main>
       <header>
-        <h1>{scenario.name}</h1>
+        <select value={scenarios.findIndex((s) => s.name === scenario.name)}
+          onChange={(e) => setScenario(scenarios[Number(e.target.value)])}>
+          {scenarios.map((s, i) => <option key={s.name} value={i}>{s.name}</option>)}
+        </select>
         <span className="seed">seed {scenario.seed}</span>
         <button onClick={newSeed}>New seed</button>
       </header>
+      <p className="description">{scenario.description}</p>
 
       <section className="panel">
-        <RoadStrip run={run} frame={frame} fromM={0} toM={run.road.length_m} label="whole road" />
+        <RoadStrip run={run} frame={frame} fromM={0} toM={run.path_length_m} label="whole road" />
         <RoadStrip run={run} frame={frame} fromM={truthS - CLOSE_UP_M} toM={truthS + CLOSE_UP_M}
           label={`close-up, ±${CLOSE_UP_M} m around the true car`} />
         <Legend run={run} />
@@ -60,16 +72,23 @@ export default function App() {
           {SPEEDS.map((s) => <option key={s} value={s}>{s}×</option>)}
         </select>
         <span className="readout">
-          t = {t.toFixed(1)} s · truth {truthS.toFixed(0)} m
+          t = {t.toFixed(1)} s · truth {truthS.toFixed(0)} m on {run.path} at {(run.truth_v_mps[frame] * 3.6).toFixed(0)} km/h
           {run.estimates.map((e) => {
             const err = e.error_m[frame];
-            return <span key={e.estimator}> · {e.estimator} error {err == null ? "–" : `${err.toFixed(1)} m`}</span>;
+            const onPath = e.path[frame];
+            const wrong = onPath != null && onPath !== run.path ? ` (thinks: ${onPath})` : "";
+            return <span key={e.estimator}> · {e.estimator} error {err == null ? "–" : `${err.toFixed(1)} m`}{wrong}</span>;
           })}
         </span>
       </section>
 
       <section className="panel">
-        <ErrorPlot run={run} frame={frame} />
+        <h2>Along-track error</h2>
+        <TimePlot run={run} frame={frame} lines={errorLines} yTitle="error (m)" />
+      </section>
+      <section className="panel">
+        <h2>Speed</h2>
+        <TimePlot run={run} frame={frame} lines={speedLines} yTitle="km/h" />
       </section>
     </main>
   );

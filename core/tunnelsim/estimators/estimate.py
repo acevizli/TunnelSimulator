@@ -8,7 +8,8 @@ from tunnelsim.sensors.source import Sample
 
 @dataclass(frozen=True)
 class Estimate:
-    s_m: float  # believed along-track distance
+    path: str  # which way through the road the estimator believes the car is on
+    s_m: float  # believed along-track distance on that path
     v_mps: float  # believed speed
     sigma_m: float | None  # 1-sigma along-track uncertainty; None if the estimator has no notion of it
 
