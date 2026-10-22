@@ -46,7 +46,7 @@ function roadTraces(run: Run) {
     mode: "lines" as const, line: { color: "#e5e7eb", width: 12 }, showlegend: false, hoverinfo: "skip" as const,
   }));
   const roads = run.shapes.map((p) => ({
-    x: p.x_m, y: p.y_m, mode: "lines+text" as const, showlegend: false, hoverinfo: "skip" as const,
+    x: p.x_m, y: p.y_m, mode: "lines+text" as const, showlegend: false, hoverinfo: "skip" as const, cliponaxis: false,
     line: { color: p.name === run.path ? "#4b5563" : "#9ca3af", width: 2 },
     text: p.x_m.map((_, i) => (i === p.x_m.length - 1 ? p.name : "")), textposition: "middle right" as const,
   }));

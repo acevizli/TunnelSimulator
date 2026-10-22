@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { computeRun, fetchScenarios, type Run, type Scenario } from "./api";
 import { TRUTH_COLOR, bandColor, estimatorColor } from "./colors";
 import MapView from "./MapView";
+import RealMap from "./RealMap";
 import RoadStrip from "./RoadStrip";
 import SensorPanel from "./SensorPanel";
 import TimePlot, { type Line } from "./TimePlot";
@@ -79,6 +80,7 @@ export default function App() {
 
       <section className="panel maps">
         <div><h2>Map, from above</h2><MapView run={run} frame={frame} /></div>
+        <div><h2>The real tunnel this road is based on</h2><RealMap run={run} /></div>
         <div><h2>Close-up, ±300 m around the true car</h2><MapView run={run} frame={frame} aroundCarM={300} /></div>
       </section>
 

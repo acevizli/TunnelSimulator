@@ -21,6 +21,16 @@ def open_air(length_m: float, radius_m: float | None = None, grade_pct: float = 
     return Segment(length_m=length_m, radius_m=radius_m, grade_pct=grade_pct, tunnel=False)
 
 
+class RealTunnel(BaseModel):
+    """The real tunnel a road is simplified from, and the box around it on a world map (degrees)."""
+
+    name: str
+    west: float
+    south: float
+    east: float
+    north: float
+
+
 class RoadSpec(BaseModel):
     def tunnel_section(self) -> list[Segment]:
         raise NotImplementedError
@@ -45,6 +55,9 @@ class StraightRoad(RoadSpec):
 
     kind: Literal["straight"] = "straight"
     description: str = "Based on the Fort McHenry Tunnel (straight, flat, 2.2 km)"
+    based_on: RealTunnel = RealTunnel(
+        name="Fort McHenry Tunnel, Baltimore", west=-76.595, south=39.254, east=-76.560, north=39.271
+    )
     tunnel_length_m: float = Field(2000, ge=500, le=5000)
 
     def tunnel_section(self):
@@ -56,6 +69,9 @@ class LongGradeRoad(RoadSpec):
 
     kind: Literal["long_grade"] = "long_grade"
     description: str = "Based on Södra länken, Stockholm (4.5 km, 5% grades, exits underground)"
+    based_on: RealTunnel = RealTunnel(
+        name="Södra länken, Stockholm", west=18.035, south=59.292, east=18.120, north=59.308
+    )
     tunnel_length_m: float = Field(4500, ge=2000, le=5000)
     grade_pct: float = Field(5, ge=0, le=10)
     exit_at_m: float = Field(2700, description="Exit position from the tunnel entrance")
@@ -80,6 +96,9 @@ class TwoExitsRoad(RoadSpec):
 
     kind: Literal["two_exits"] = "two_exits"
     description: str = "Based on the I-93 O'Neill Tunnel, Boston (2.4 km, exits inside)"
+    based_on: RealTunnel = RealTunnel(
+        name="Thomas P. O'Neill Jr. Tunnel (I-93), Boston", west=-71.072, south=42.344, east=-71.046, north=42.369
+    )
     tunnel_length_m: float = Field(2400, ge=1500, le=5000)
     exit_a_at_m: float = 1200
     exit_b_at_m: float = 1600
@@ -105,6 +124,9 @@ class ForkRoad(RoadSpec):
 
     kind: Literal["fork"] = "fork"
     description: str = "Based on the Opera Tunnel, Oslo (5.8 km, a dip, an open-air gap, a fork)"
+    based_on: RealTunnel = RealTunnel(
+        name="Operatunnelen, Oslo", west=10.712, south=59.897, east=10.792, north=59.915
+    )
     dip_grade_pct: float = Field(4, ge=0, le=8)
     gap_m: float = Field(100, ge=0, description="Open-air gap length; 0 removes it")
 
@@ -127,6 +149,9 @@ class SpiralRoad(RoadSpec):
 
     kind: Literal["spiral"] = "spiral"
     description: str = "Based on the Spiralen tunnel, Drammen (1.65 km, ~35 m radius, ~10% grade)"
+    based_on: RealTunnel = RealTunnel(
+        name="Spiralen, Drammen", west=10.192, south=59.7485, east=10.208, north=59.7555
+    )
     radius_m: float = Field(35, ge=20, le=200)
     grade_pct: float = Field(10, ge=0, le=12)
 

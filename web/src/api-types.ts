@@ -244,6 +244,14 @@ export interface components {
              * @default Based on the Opera Tunnel, Oslo (5.8 km, a dip, an open-air gap, a fork)
              */
             description: string;
+            /** @default {
+             *       "name": "Operatunnelen, Oslo",
+             *       "west": 10.712,
+             *       "south": 59.897,
+             *       "east": 10.792,
+             *       "north": 59.915
+             *     } */
+            based_on: components["schemas"]["RealTunnel"];
             /**
              * Dip Grade Pct
              * @default 4
@@ -394,6 +402,14 @@ export interface components {
              * @default Based on Södra länken, Stockholm (4.5 km, 5% grades, exits underground)
              */
             description: string;
+            /** @default {
+             *       "name": "Södra länken, Stockholm",
+             *       "west": 18.035,
+             *       "south": 59.292,
+             *       "east": 18.12,
+             *       "north": 59.308
+             *     } */
+            based_on: components["schemas"]["RealTunnel"];
             /**
              * Tunnel Length M
              * @default 4500
@@ -522,6 +538,22 @@ export interface components {
             /** Tunnel */
             tunnel: boolean[];
         };
+        /**
+         * RealTunnel
+         * @description The real tunnel a road is simplified from, and the box around it on a world map (degrees).
+         */
+        RealTunnel: {
+            /** Name */
+            name: string;
+            /** West */
+            west: number;
+            /** South */
+            south: number;
+            /** East */
+            east: number;
+            /** North */
+            north: number;
+        };
         /** Road */
         Road: {
             /** Main */
@@ -597,6 +629,13 @@ export interface components {
              * @default {
              *       "kind": "straight",
              *       "description": "Based on the Fort McHenry Tunnel (straight, flat, 2.2 km)",
+             *       "based_on": {
+             *         "east": -76.56,
+             *         "name": "Fort McHenry Tunnel, Baltimore",
+             *         "north": 39.271,
+             *         "south": 39.254,
+             *         "west": -76.595
+             *       },
              *       "tunnel_length_m": 2000
              *     }
              */
@@ -788,6 +827,14 @@ export interface components {
              * @default Based on the Spiralen tunnel, Drammen (1.65 km, ~35 m radius, ~10% grade)
              */
             description: string;
+            /** @default {
+             *       "name": "Spiralen, Drammen",
+             *       "west": 10.192,
+             *       "south": 59.7485,
+             *       "east": 10.208,
+             *       "north": 59.7555
+             *     } */
+            based_on: components["schemas"]["RealTunnel"];
             /**
              * Radius M
              * @default 35
@@ -852,6 +899,14 @@ export interface components {
              * @default Based on the Fort McHenry Tunnel (straight, flat, 2.2 km)
              */
             description: string;
+            /** @default {
+             *       "name": "Fort McHenry Tunnel, Baltimore",
+             *       "west": -76.595,
+             *       "south": 39.254,
+             *       "east": -76.56,
+             *       "north": 39.271
+             *     } */
+            based_on: components["schemas"]["RealTunnel"];
             /**
              * Tunnel Length M
              * @default 2000
@@ -873,6 +928,14 @@ export interface components {
              * @default Based on the I-93 O'Neill Tunnel, Boston (2.4 km, exits inside)
              */
             description: string;
+            /** @default {
+             *       "name": "Thomas P. O'Neill Jr. Tunnel (I-93), Boston",
+             *       "west": -71.072,
+             *       "south": 42.344,
+             *       "east": -71.046,
+             *       "north": 42.369
+             *     } */
+            based_on: components["schemas"]["RealTunnel"];
             /**
              * Tunnel Length M
              * @default 2400
