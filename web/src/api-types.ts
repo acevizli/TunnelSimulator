@@ -43,8 +43,40 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * ChangeInside
+         * @description Steady speed up to the tunnel, then a different steady speed inside it.
+         */
+        ChangeInside: {
+            /**
+             * Speed Kmh
+             * @default 70
+             */
+            speed_kmh: number;
+            /**
+             * Wobble Kmh
+             * @description Size of the slow random speed variation
+             * @default 2
+             */
+            wobble_kmh: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "change_inside";
+            /**
+             * New Speed Kmh
+             * @default 100
+             */
+            new_speed_kmh: number;
+            /**
+             * Change At Fraction
+             * @default 0.3
+             */
+            change_at_fraction: number;
+        };
+        /**
          * CleanGps
-         * @description GPS that works normally outside the tunnel and is simply absent inside.
+         * @description GPS that works normally in the open and is simply absent in tunnels.
          */
         CleanGps: {
             /**
@@ -63,6 +95,8 @@ export interface components {
         EstimateTrack: {
             /** Estimator */
             estimator: string;
+            /** Path */
+            path: (string | null)[];
             /** S M */
             s_m: (number | null)[];
             /** V Mps */
@@ -72,22 +106,104 @@ export interface components {
             /** Error M */
             error_m: (number | null)[];
         };
+        /** Exit */
+        Exit: {
+            /** Name */
+            name: string;
+            /** At M */
+            at_m: number;
+            /** Branch */
+            branch: components["schemas"]["Segment"][];
+        };
+        /** ExitMark */
+        ExitMark: {
+            /** Name */
+            name: string;
+            /** At M */
+            at_m: number;
+            /** Planned */
+            planned: boolean;
+        };
         /**
-         * FreeFlowSpeed
-         * @description Steady speed with a gentle, slow wobble around it.
+         * ForkRoad
+         * @description A dip, a short open-air gap where GPS briefly returns, then the road forks.
          */
-        FreeFlowSpeed: {
+        ForkRoad: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "fork";
+            /**
+             * Description
+             * @default Based on the Opera Tunnel, Oslo (5.8 km, a dip, an open-air gap, a fork)
+             */
+            description: string;
+            /**
+             * Dip Grade Pct
+             * @default 4
+             */
+            dip_grade_pct: number;
+            /**
+             * Gap M
+             * @description Open-air gap length; 0 removes it
+             * @default 100
+             */
+            gap_m: number;
+        };
+        /** FreeFlow */
+        FreeFlow: {
             /**
              * Speed Kmh
+             * @description Cruising speed before the tunnel
              * @default 80
              */
             speed_kmh: number;
             /**
              * Wobble Kmh
-             * @description Size of the slow speed variation
+             * @description Size of the slow random speed variation
              * @default 2
              */
             wobble_kmh: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "free_flow";
+        };
+        /**
+         * FullStop
+         * @description One long stop inside the tunnel, e.g. behind a breakdown.
+         */
+        FullStop: {
+            /**
+             * Speed Kmh
+             * @description Cruising speed before the tunnel
+             * @default 80
+             */
+            speed_kmh: number;
+            /**
+             * Wobble Kmh
+             * @description Size of the slow random speed variation
+             * @default 2
+             */
+            wobble_kmh: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "full_stop";
+            /**
+             * Stop At Fraction
+             * @description Where in the tunnel, 0 = entrance, 1 = exit
+             * @default 0.5
+             */
+            stop_at_fraction: number;
+            /**
+             * Stop S
+             * @default 60
+             */
+            stop_s: number;
         };
         /** GpsPoint */
         GpsPoint: {
@@ -102,21 +218,93 @@ export interface components {
             detail?: components["schemas"]["ValidationError"][];
         };
         /**
-         * Road
-         * @description A straight, flat road with one tunnel on it.
+         * LongGradeRoad
+         * @description A long descent and climb with gentle curves and one exit partway in.
          */
+        LongGradeRoad: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "long_grade";
+            /**
+             * Description
+             * @default Based on Södra länken, Stockholm (4.5 km, 5% grades, exits underground)
+             */
+            description: string;
+            /**
+             * Tunnel Length M
+             * @default 4500
+             */
+            tunnel_length_m: number;
+            /**
+             * Grade Pct
+             * @default 5
+             */
+            grade_pct: number;
+            /**
+             * Exit At M
+             * @description Exit position from the tunnel entrance
+             * @default 2700
+             */
+            exit_at_m: number;
+        };
+        /**
+         * OpenRoad
+         * @description Driving with good GPS before and after the tunnel.
+         */
+        OpenRoad: {
+            /**
+             * Before S
+             * @description Seconds of driving before the tunnel
+             * @default 90
+             */
+            before_s: number;
+            /**
+             * After M
+             * @default 1000
+             */
+            after_m: number;
+        };
+        /** Road */
         Road: {
-            /** Length M */
-            length_m: number;
-            /** Tunnel Start M */
-            tunnel_start_m: number;
-            /** Tunnel End M */
-            tunnel_end_m: number;
+            /** Main */
+            main: components["schemas"]["Segment"][];
+            /**
+             * Exits
+             * @default []
+             */
+            exits: components["schemas"]["Exit"][];
+        };
+        /**
+         * Route
+         * @description Which exit the driver is meant to take, and whether they actually do.
+         */
+        Route: {
+            /**
+             * Planned Exit
+             * @description None = stay on the main road
+             */
+            planned_exit?: string | null;
+            /**
+             * Missed Exit
+             * @description The car drives past the planned exit
+             * @default false
+             */
+            missed_exit: boolean;
         };
         /** Run */
         Run: {
             scenario: components["schemas"]["Scenario"];
             road: components["schemas"]["Road"];
+            /** Path */
+            path: string;
+            /** Path Length M */
+            path_length_m: number;
+            /** Tunnels */
+            tunnels: components["schemas"]["Span"][];
+            /** Exits */
+            exits: components["schemas"]["ExitMark"][];
             /** T S */
             t_s: number[];
             /** Truth S M */
@@ -132,46 +320,228 @@ export interface components {
         Scenario: {
             /** Name */
             name: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
             /** Seed */
             seed: number;
+            /**
+             * Road
+             * @default {
+             *       "kind": "straight",
+             *       "description": "Based on the Fort McHenry Tunnel (straight, flat, 2.2 km)",
+             *       "tunnel_length_m": 2000
+             *     }
+             */
+            road: components["schemas"]["StraightRoad"] | components["schemas"]["LongGradeRoad"] | components["schemas"]["TwoExitsRoad"] | components["schemas"]["ForkRoad"] | components["schemas"]["SpiralRoad"];
             /** @default {
-             *       "tunnel_length_m": 2000,
-             *       "open_before_s": 90,
-             *       "open_after_m": 1000
+             *       "before_s": 90,
+             *       "after_m": 1000
              *     } */
-            road: components["schemas"]["StraightRoadSpec"];
-            /** @default {
+            open_road: components["schemas"]["OpenRoad"];
+            /**
+             * Speed
+             * @default {
              *       "speed_kmh": 80,
-             *       "wobble_kmh": 2
+             *       "wobble_kmh": 2,
+             *       "kind": "free_flow"
+             *     }
+             */
+            speed: components["schemas"]["FreeFlow"] | components["schemas"]["SlowdownAtEntry"] | components["schemas"]["StopAndGo"] | components["schemas"]["FullStop"] | components["schemas"]["ChangeInside"];
+            /** @default {
+             *       "missed_exit": false
              *     } */
-            speed: components["schemas"]["FreeFlowSpeed"];
+            route: components["schemas"]["Route"];
             /** @default {
              *       "noise_m": 3,
              *       "speed_noise_mps": 0.2
              *     } */
             gps: components["schemas"]["CleanGps"];
         };
+        /** Segment */
+        Segment: {
+            /** Length M */
+            length_m: number;
+            /**
+             * Radius M
+             * @description None = straight; positive turns left, negative turns right
+             */
+            radius_m?: number | null;
+            /**
+             * Grade Pct
+             * @description Climb in % (metres up per 100 m along); negative is downhill
+             * @default 0
+             */
+            grade_pct: number;
+            /**
+             * Tunnel
+             * @default false
+             */
+            tunnel: boolean;
+        };
         /**
-         * StraightRoadSpec
-         * @description Flat, straight road: open road, then the tunnel, then open road.
+         * SlowdownAtEntry
+         * @description Traffic bunches up at the entrance, then clears.
          */
-        StraightRoadSpec: {
+        SlowdownAtEntry: {
+            /**
+             * Speed Kmh
+             * @description Cruising speed before the tunnel
+             * @default 80
+             */
+            speed_kmh: number;
+            /**
+             * Wobble Kmh
+             * @description Size of the slow random speed variation
+             * @default 2
+             */
+            wobble_kmh: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "slowdown_at_entry";
+            /**
+             * Slow Kmh
+             * @default 40
+             */
+            slow_kmh: number;
+            /**
+             * Starts Before M
+             * @description Slowdown begins this far before the entrance
+             * @default 200
+             */
+            starts_before_m: number;
+            /**
+             * Lasts M
+             * @default 700
+             */
+            lasts_m: number;
+        };
+        /** Span */
+        Span: {
+            /** Start M */
+            start_m: number;
+            /** End M */
+            end_m: number;
+        };
+        /**
+         * SpiralRoad
+         * @description A tight climbing spiral: extreme, but the most for curve and grade checks to work with.
+         */
+        SpiralRoad: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "spiral";
+            /**
+             * Description
+             * @default Based on the Spiralen tunnel, Drammen (1.65 km, ~35 m radius, ~10% grade)
+             */
+            description: string;
+            /**
+             * Radius M
+             * @default 35
+             */
+            radius_m: number;
+            /**
+             * Grade Pct
+             * @default 10
+             */
+            grade_pct: number;
+        };
+        /**
+         * StopAndGo
+         * @description Inside the tunnel: drive a little, stop, drive a little, stop...
+         */
+        StopAndGo: {
+            /**
+             * Speed Kmh
+             * @description Cruising speed before the tunnel
+             * @default 80
+             */
+            speed_kmh: number;
+            /**
+             * Wobble Kmh
+             * @description Size of the slow random speed variation
+             * @default 2
+             */
+            wobble_kmh: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "stop_and_go";
+            /**
+             * Go Kmh
+             * @default 30
+             */
+            go_kmh: number;
+            /**
+             * Go S
+             * @default 20
+             */
+            go_s: number;
+            /**
+             * Stop S
+             * @default 10
+             */
+            stop_s: number;
+        };
+        /**
+         * StraightRoad
+         * @description Flat and straight: the control case, and the case with no landmarks at all.
+         */
+        StraightRoad: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "straight";
+            /**
+             * Description
+             * @default Based on the Fort McHenry Tunnel (straight, flat, 2.2 km)
+             */
+            description: string;
             /**
              * Tunnel Length M
              * @default 2000
              */
             tunnel_length_m: number;
+        };
+        /**
+         * TwoExitsRoad
+         * @description Two exits close together: is the callout for the right one at the right time?
+         */
+        TwoExitsRoad: {
             /**
-             * Open Before S
-             * @description Seconds of driving with GPS before the tunnel
-             * @default 90
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
-            open_before_s: number;
+            kind: "two_exits";
             /**
-             * Open After M
-             * @default 1000
+             * Description
+             * @default Based on the I-93 O'Neill Tunnel, Boston (2.4 km, exits inside)
              */
-            open_after_m: number;
+            description: string;
+            /**
+             * Tunnel Length M
+             * @default 2400
+             */
+            tunnel_length_m: number;
+            /**
+             * Exit A At M
+             * @default 1200
+             */
+            exit_a_at_m: number;
+            /**
+             * Exit B At M
+             * @default 1600
+             */
+            exit_b_at_m: number;
         };
         /** ValidationError */
         ValidationError: {

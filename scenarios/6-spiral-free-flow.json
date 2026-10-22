@@ -1,0 +1,7 @@
+{
+  "name": "6 · Spiral + free flow",
+  "description": "Six tight climbing turns: the most for curve and grade fixes to work with.",
+  "seed": 6,
+  "road": { "kind": "spiral" },
+  "speed": { "kind": "free_flow", "speed_kmh": 50 }
+}

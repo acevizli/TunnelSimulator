@@ -1,7 +1,0 @@
-{
-  "name": "Straight + free flow",
-  "seed": 1,
-  "road": { "tunnel_length_m": 2000, "open_before_s": 90, "open_after_m": 1000 },
-  "speed": { "speed_kmh": 80, "wobble_kmh": 2 },
-  "gps": { "noise_m": 3.0, "speed_noise_mps": 0.2 }
-}

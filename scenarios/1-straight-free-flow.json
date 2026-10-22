@@ -1,0 +1,7 @@
+{
+  "name": "1 · Straight + free flow",
+  "description": "The easy case: flat, straight 2 km tunnel at a steady 80 km/h.",
+  "seed": 1,
+  "road": { "kind": "straight", "tunnel_length_m": 2000 },
+  "speed": { "kind": "free_flow", "speed_kmh": 80 }
+}

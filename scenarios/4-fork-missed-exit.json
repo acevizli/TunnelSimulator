@@ -1,0 +1,8 @@
+{
+  "name": "4 · Fork + missed exit",
+  "description": "Branch decision: the route says fork right, the driver stays left.",
+  "seed": 4,
+  "road": { "kind": "fork" },
+  "speed": { "kind": "free_flow", "speed_kmh": 70 },
+  "route": { "planned_exit": "Fork right", "missed_exit": true }
+}

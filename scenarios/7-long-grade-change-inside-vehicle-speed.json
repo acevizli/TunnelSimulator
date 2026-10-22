@@ -1,0 +1,7 @@
+{
+  "name": "7 · Long grade + speed change + vehicle speed",
+  "description": "The vehicle-speed add-on's known failure: one speed before the tunnel is not enough to learn its error. (The add-on arrives later.)",
+  "seed": 7,
+  "road": { "kind": "long_grade" },
+  "speed": { "kind": "change_inside", "speed_kmh": 70, "new_speed_kmh": 100 }
+}

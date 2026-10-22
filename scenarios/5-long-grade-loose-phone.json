@@ -1,0 +1,8 @@
+{
+  "name": "5 · Long grade + loose phone",
+  "description": "Re-learning how the phone sits after it shifts mid-tunnel. (Loose mounting arrives with the sensor models.)",
+  "seed": 5,
+  "road": { "kind": "long_grade" },
+  "speed": { "kind": "free_flow", "speed_kmh": 70 },
+  "route": { "planned_exit": "Exit" }
+}

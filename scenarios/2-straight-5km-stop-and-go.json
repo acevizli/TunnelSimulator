@@ -1,0 +1,7 @@
+{
+  "name": "2 · Straight 5 km + stop-and-go",
+  "description": "Where things break: a long tunnel with no landmarks and repeated stops.",
+  "seed": 2,
+  "road": { "kind": "straight", "tunnel_length_m": 5000 },
+  "speed": { "kind": "stop_and_go", "speed_kmh": 80, "go_kmh": 30, "go_s": 20, "stop_s": 10 }
+}

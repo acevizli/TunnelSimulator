@@ -1,34 +1,42 @@
 """A scenario: one complete drive, built from separate pieces.
 
-Each piece is its own model so it can be swapped or edited on its own.
-For now there is one choice per piece; more roads, speed profiles,
-mountings and GPS models are added as further pieces.
+Each piece is its own model with editable numbers, so a scenario can be
+changed one piece at a time ("same tunnel, but stop-and-go").
 """
 
 from pathlib import Path
+from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
-from tunnelsim.road import Road
+from tunnelsim.road import MAIN, Road
+from tunnelsim.roads import ForkRoad, LongGradeRoad, SpiralRoad, StraightRoad, TwoExitsRoad
+from tunnelsim.speed_profiles import ChangeInside, FreeFlow, FullStop, SlowdownAtEntry, StopAndGo
+
+RoadPiece = Annotated[
+    StraightRoad | LongGradeRoad | TwoExitsRoad | ForkRoad | SpiralRoad, Field(discriminator="kind")
+]
+SpeedPiece = Annotated[
+    FreeFlow | SlowdownAtEntry | StopAndGo | FullStop | ChangeInside, Field(discriminator="kind")
+]
 
 
-class StraightRoadSpec(BaseModel):
-    """Flat, straight road: open road, then the tunnel, then open road."""
+class OpenRoad(BaseModel):
+    """Driving with good GPS before and after the tunnel."""
 
-    tunnel_length_m: float = Field(2000, ge=500, le=5000)
-    open_before_s: float = Field(90, ge=0, description="Seconds of driving with GPS before the tunnel")
-    open_after_m: float = Field(1000, ge=0)
+    before_s: float = Field(90, ge=0, description="Seconds of driving before the tunnel")
+    after_m: float = Field(1000, ge=0)
 
 
-class FreeFlowSpeed(BaseModel):
-    """Steady speed with a gentle, slow wobble around it."""
+class Route(BaseModel):
+    """Which exit the driver is meant to take, and whether they actually do."""
 
-    speed_kmh: float = Field(80, gt=0)
-    wobble_kmh: float = Field(2, ge=0, description="Size of the slow speed variation")
+    planned_exit: str | None = Field(None, description="None = stay on the main road")
+    missed_exit: bool = Field(False, description="The car drives past the planned exit")
 
 
 class CleanGps(BaseModel):
-    """GPS that works normally outside the tunnel and is simply absent inside."""
+    """GPS that works normally in the open and is simply absent in tunnels."""
 
     noise_m: float = Field(3.0, ge=0, description="Horizontal position noise, 1 sigma")
     speed_noise_mps: float = Field(0.2, ge=0)
@@ -36,21 +44,39 @@ class CleanGps(BaseModel):
 
 class Scenario(BaseModel):
     name: str
+    description: str = ""
     seed: int
-    road: StraightRoadSpec = StraightRoadSpec()
-    speed: FreeFlowSpeed = FreeFlowSpeed()
+    road: RoadPiece = StraightRoad()
+    open_road: OpenRoad = OpenRoad()
+    speed: SpeedPiece = FreeFlow()
+    route: Route = Route()
     gps: CleanGps = CleanGps()
+
+    @model_validator(mode="after")
+    def _route_fits_road(self):
+        planned = self.route.planned_exit
+        if planned is not None and planned not in self.road.exit_names():
+            raise ValueError(f"planned exit {planned!r} is not on this road; it has {self.road.exit_names()}")
+        if self.route.missed_exit and planned is None:
+            raise ValueError("missed_exit needs a planned exit to miss")
+        return self
+
+    @property
+    def driven_exit(self) -> str:
+        """The path the car really takes."""
+        if self.route.planned_exit is None or self.route.missed_exit:
+            return MAIN
+        return self.route.planned_exit
+
+    @property
+    def planned_path(self) -> str:
+        return self.route.planned_exit or MAIN
 
 
 def build_road(scenario: Scenario) -> Road:
-    """Lay out the road so the car reaches the tunnel after `open_before_s` seconds."""
-    before_m = scenario.road.open_before_s * scenario.speed.speed_kmh / 3.6
-    tunnel_end_m = before_m + scenario.road.tunnel_length_m
-    return Road(
-        length_m=tunnel_end_m + scenario.road.open_after_m,
-        tunnel_start_m=before_m,
-        tunnel_end_m=tunnel_end_m,
-    )
+    """Lay out the road so the car reaches the tunnel after `open_road.before_s` seconds."""
+    before_m = scenario.open_road.before_s * scenario.speed.speed_kmh / 3.6
+    return scenario.road.build(before_m=max(before_m, 1.0), after_m=max(scenario.open_road.after_m, 1.0))
 
 
 def load_scenarios(folder: Path) -> list[Scenario]:

@@ -1,0 +1,8 @@
+{
+  "name": "3 · Two exits + slowdown",
+  "description": "Callout timing: two exits 400 m apart, the route takes the second, traffic slows at the entrance.",
+  "seed": 3,
+  "road": { "kind": "two_exits" },
+  "speed": { "kind": "slowdown_at_entry", "speed_kmh": 80, "slow_kmh": 40 },
+  "route": { "planned_exit": "Exit B" }
+}

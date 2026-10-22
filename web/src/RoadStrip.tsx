@@ -11,7 +11,7 @@ export default function RoadStrip({ run, frame, fromM, toM, label }: Props) {
   useEffect(() => {
     const canvas = ref.current!;
     const width = canvas.clientWidth;
-    const height = 90;
+    const height = 96;
     const dpr = window.devicePixelRatio || 1;
     canvas.width = width * dpr;
     canvas.height = height * dpr;
@@ -23,17 +23,30 @@ export default function RoadStrip({ run, frame, fromM, toM, label }: Props) {
     const x = (s: number) => pad + ((s - fromM) / (toM - fromM)) * (width - 2 * pad);
     const roadY = 58;
 
-    // Tunnel
-    const { tunnel_start_m, tunnel_end_m } = run.road;
+    // Tunnels along the driven path
     ctx.fillStyle = "#d1d5db";
-    ctx.fillRect(x(tunnel_start_m), roadY - 14, x(tunnel_end_m) - x(tunnel_start_m), 28);
+    for (const span of run.tunnels) {
+      ctx.fillRect(x(span.start_m), roadY - 14, x(span.end_m) - x(span.start_m), 28);
+    }
     // Road
     ctx.strokeStyle = "#6b7280";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(x(Math.max(0, fromM)), roadY);
-    ctx.lineTo(x(Math.min(run.road.length_m, toM)), roadY);
+    ctx.lineTo(x(Math.min(run.path_length_m, toM)), roadY);
     ctx.stroke();
+
+    // Exits: a short tick below the road; the planned one is labelled
+    ctx.font = "11px system-ui";
+    for (const exit of run.exits) {
+      ctx.strokeStyle = ctx.fillStyle = exit.planned ? "#059669" : "#9ca3af";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x(exit.at_m), roadY);
+      ctx.lineTo(x(exit.at_m) + 8, roadY + 20);
+      ctx.stroke();
+      ctx.fillText(exit.planned ? `${exit.name} (route)` : exit.name, x(exit.at_m) + 10, roadY + 26);
+    }
 
     // GPS fixes from the last 5 s
     const t = run.t_s[frame];
@@ -46,7 +59,7 @@ export default function RoadStrip({ run, frame, fromM, toM, label }: Props) {
     run.estimates.forEach((track, i) => {
       const s = track.s_m[frame];
       if (s == null) return;
-      const top = 14 + i * 12;
+      const top = 20 + i * 10;
       ctx.strokeStyle = ctx.fillStyle = estimatorColor(track.estimator);
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -61,11 +74,10 @@ export default function RoadStrip({ run, frame, fromM, toM, label }: Props) {
     dot(ctx, x(run.truth_s_m[frame]), roadY, 6);
 
     ctx.fillStyle = "#6b7280";
-    ctx.font = "11px system-ui";
-    ctx.fillText(label, pad, height - 4);
+    ctx.fillText(label, pad, 10);
   }, [run, frame, fromM, toM, label]);
 
-  return <canvas ref={ref} className="strip" style={{ height: 90 }} />;
+  return <canvas ref={ref} className="strip" style={{ height: 96 }} />;
 }
 
 function dot(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
