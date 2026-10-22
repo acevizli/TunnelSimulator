@@ -1,12 +1,9 @@
-from pathlib import Path
-
 import pytest
+from conftest import SCENARIOS, scenario_run
 from pydantic import ValidationError
 
 from tunnelsim.run import run_scenario
-from tunnelsim.scenario import Scenario, load_scenarios
-
-SCENARIOS = load_scenarios(Path(__file__).parents[1] / "scenarios")
+from tunnelsim.scenario import Scenario
 
 
 def test_there_are_eight_test_scenarios_with_distinct_seeds():
@@ -16,7 +13,7 @@ def test_there_are_eight_test_scenarios_with_distinct_seeds():
 
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda s: s.name)
 def test_every_test_scenario_runs_and_baseline_recovers_once_gps_settles(scenario):
-    run = run_scenario(scenario)
+    run = scenario_run(scenario.name)
     baseline = run.estimates[0]
     left_at = next(t for t, s in zip(run.t_s, run.truth_s_m) if s > run.tunnels[-1].end_m)
     # Once GPS has settled (first fix, biased fixes, converging), the baseline is back on the car.

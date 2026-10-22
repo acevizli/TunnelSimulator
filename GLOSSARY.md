@@ -65,7 +65,7 @@ The estimator's belief about the car's along-track distance and speed, always pa
 _Avoid_: Prediction, guess
 
 **Along-track error**:
-The estimate's along-track distance minus the ground truth's; positive when the estimate is ahead of the car.
+The estimate's along-track distance minus the ground truth's; positive when the estimate is ahead of the car. When the estimate is on a different branch from the car, both past the split, it is the distance between them along the road (back to the split and out the other branch), counted as positive.
 _Avoid_: Position error, drift
 
 **Uncertainty band**:
@@ -79,6 +79,18 @@ _Avoid_: Simulation, trial
 **Baseline**:
 The comparison estimator that extrapolates the last GPS speed through the tunnel.
 _Avoid_: Naive, dumb
+
+**Map filter**:
+The main estimator: follows the car's along-track distance on the road map, corrected by stops, curves, grade changes and GPS where it can be trusted.
+_Avoid_: Main estimator, EKF, the model
+
+**Alignment**:
+Working out how the phone sits in the car (which way is forward, which way is up) from the drive before the tunnel, without being told.
+_Avoid_: Calibration, mount estimation
+
+**Landmark**:
+A place on the road map the phone's own sensors can recognise: where a curve starts or ends, or the grade changes. Passing one tells the estimator where it is.
+_Avoid_: Feature, anchor
 
 **Add-on**:
 An optional information source from outside the phone (vehicle speed, tunnel beacons) that can be switched on to measure how much it improves the estimate.

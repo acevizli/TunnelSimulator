@@ -54,6 +54,12 @@ class Road(BaseModel):
     def paths(self) -> list["Path"]:
         return [self.path(MAIN)] + [self.path(e.name) for e in self.exits]
 
+    def split_m(self, a: str, b: str) -> float | None:
+        """Along-track distance where paths `a` and `b` part ways; None if they are the same path."""
+        if a == b:
+            return None
+        return min(self.exit(name).at_m for name in (a, b) if name != MAIN)
+
 
 def _cut(segments: list[Segment], at_m: float) -> list[Segment]:
     """The segments covering the first `at_m` metres."""
@@ -104,7 +110,8 @@ class Path:
         return np.interp(s, self.s, table)
 
     def in_tunnel(self, s: np.ndarray | float) -> np.ndarray:
-        i = np.clip(np.round(np.asarray(s) / STEP_M).astype(int), 0, len(self.s) - 1)
+        # Rounded down, so this agrees exactly with tunnel_spans(): start <= s < end.
+        i = np.clip(np.floor(np.asarray(s) / STEP_M).astype(int), 0, len(self.s) - 1)
         return self.tunnel[i]
 
     def tunnel_spans(self) -> list[Span]:

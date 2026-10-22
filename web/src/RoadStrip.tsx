@@ -1,10 +1,11 @@
 import { useEffect, useRef } from "react";
 import type { Run } from "./api";
-import { GPS_COLOR, GPS_PHASE_COLORS, TRUTH_COLOR, estimatorColor } from "./colors";
+import { GPS_COLOR, GPS_PHASE_COLORS, TRUTH_COLOR, bandColor, estimatorColor } from "./colors";
 
 type Props = { run: Run; frame: number; fromM: number; toM: number; label: string };
 
 // Draws the stretch of road [fromM, toM] with the tunnel, the true car and every estimate.
+// An estimate on a branch the car isn't driving is drawn hollow: its distance is along that other branch.
 export default function RoadStrip({ run, frame, fromM, toM, label }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
 
@@ -56,18 +57,34 @@ export default function RoadStrip({ run, frame, fromM, toM, label }: Props) {
       dot(ctx, x(p.s_m), roadY, 3);
     }
 
-    // Estimates: a marker above the road, with a stem down to it
+    // Estimates: a marker above the road, with a stem down to it, inside its uncertainty band (±2σ)
     run.estimates.forEach((track, i) => {
       const s = track.s_m[frame];
       if (s == null) return;
       const top = 20 + i * 10;
+      const sigma = track.sigma_m[frame];
+      if (sigma != null) {
+        ctx.fillStyle = bandColor(track.estimator);
+        ctx.fillRect(x(s - 2 * sigma), top - 4, x(s + 2 * sigma) - x(s - 2 * sigma), 8);
+      }
       ctx.strokeStyle = ctx.fillStyle = estimatorColor(track.estimator);
       ctx.lineWidth = 1.5;
+      const wrong = track.wrong_branch[frame];
+      ctx.setLineDash(wrong ? [3, 3] : []);
       ctx.beginPath();
       ctx.moveTo(x(s), top);
       ctx.lineTo(x(s), roadY);
       ctx.stroke();
-      dot(ctx, x(s), top, 4);
+      ctx.setLineDash([]);
+      if (wrong) {
+        ctx.fillStyle = "#fff";
+        dot(ctx, x(s), top, 4);
+        ctx.beginPath();
+        ctx.arc(x(s), top, 4, 0, 2 * Math.PI);
+        ctx.stroke();
+      } else {
+        dot(ctx, x(s), top, 4);
+      }
     });
 
     // The true car, on the road

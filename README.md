@@ -36,6 +36,7 @@ After changing any Pydantic model in the core, regenerate the UI's types with `c
 |---|---|
 | `core/tunnelsim/` | Everything that matters: road, scenario, ground truth, sensors, estimators, evaluation. No UI code. |
 | `core/tunnelsim/run.py` | Plays one scenario end to end; the best place to start reading. |
+| `core/tunnelsim/estimators/map_filter.py` | The main estimator; its docstring lists every step it takes. |
 | `server/` | Thin FastAPI layer: lists scenarios, computes runs. No logic. |
 | `web/` | React + TypeScript replay view. Types generated from the server's schema. |
 | `scenarios/` | Scenario files (JSON). |
