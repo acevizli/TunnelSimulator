@@ -64,6 +64,18 @@ _Avoid_: Reference, actual
 The estimator's belief about the car's along-track distance and speed, always paired with its uncertainty.
 _Avoid_: Prediction, guess
 
+**Along-track error**:
+The estimate's along-track distance minus the ground truth's; positive when the estimate is ahead of the car.
+_Avoid_: Position error, drift
+
+**Uncertainty band**:
+The range around the estimate within which the estimator claims the car is, with about 95% confidence.
+_Avoid_: Error bar, confidence, accuracy
+
+**Run**:
+One scenario played once with one seed, with every estimator fed the same sensor data side by side.
+_Avoid_: Simulation, trial
+
 **Baseline**:
 The comparison estimator that extrapolates the last GPS speed through the tunnel.
 _Avoid_: Naive, dumb
