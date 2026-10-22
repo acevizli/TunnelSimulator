@@ -9,6 +9,7 @@ difference between them comes from the method, not from the noise.
 import numpy as np
 from pydantic import BaseModel
 
+from tunnelsim.callouts import Callout, MissedExitCall, callouts, missed_exit_call
 from tunnelsim.estimators.baseline import Baseline
 from tunnelsim.estimators.estimate import Estimate, Estimator
 from tunnelsim.estimators.map_filter import MapFilter
@@ -55,6 +56,9 @@ class EstimateTrack(BaseModel):
     wrong_branch: list[bool]  # shown on a branch the car isn't driving
     x_m: list[float | None]  # where the estimate puts the car on the map
     y_m: list[float | None]
+    branches: list[dict[str, float] | None]  # while the estimator is unsure which branch: path -> probability
+    callouts: list[Callout]  # exit announcements made from this estimator
+    missed_exit_call: MissedExitCall | None  # when this estimator said the car had left the route
 
 
 class PathShape(BaseModel):
@@ -74,6 +78,7 @@ class Run(BaseModel):
     tunnels: list[Span]  # along the driven path
     shapes: list[PathShape]
     exits: list[ExitMark]
+    missed_exit_t_s: float | None  # when the car really drove past its planned exit
     t_s: list[float]
     truth_s_m: list[float]
     truth_v_mps: list[float]
@@ -106,6 +111,12 @@ def run_scenario(scenario: Scenario) -> Run:
             history[estimator.name].append(estimator.estimate(t))
 
     truth_s = [float(truth.s_m[i]) for i in ticks]
+    t_out = [float(truth.t_s[i]) for i in ticks]
+    tracks = [_track(name, estimates, t_out, truth_s, road, driven.name, scenario)
+              for name, estimates in history.items()]
+    missed_at = None
+    if scenario.route.missed_exit:
+        missed_at = float(np.interp(road.exit(scenario.planned_path).at_m, truth.s_m, truth.t_s))
     return Run(
         scenario=scenario,
         road=road,
@@ -114,7 +125,8 @@ def run_scenario(scenario: Scenario) -> Run:
         tunnels=driven.tunnel_spans(),
         shapes=[_shape(p) for p in road.paths()],
         exits=[ExitMark(name=e.name, at_m=e.at_m, planned=e.name == scenario.route.planned_exit) for e in road.exits],
-        t_s=[float(truth.t_s[i]) for i in ticks],
+        missed_exit_t_s=missed_at,
+        t_s=t_out,
         truth_s_m=truth_s,
         truth_v_mps=[float(truth.v_mps[i]) for i in ticks],
         truth_height_m=[float(truth.z_m[i]) for i in ticks],
@@ -125,13 +137,14 @@ def run_scenario(scenario: Scenario) -> Run:
             for f, phase in zip(recording.gnss.fixes, recording.gnss.phases)
         ],
         sensors=_traces(recording, list(ticks)),
-        estimates=[_track(name, estimates, truth_s, road, driven.name) for name, estimates in history.items()],
+        estimates=tracks,
     )
 
 
-def _track(name: str, estimates: list[Estimate | None], truth_s_m: list[float], road: Road,
-           truth_path: str) -> EstimateTrack:
+def _track(name: str, estimates: list[Estimate | None], t_s: list[float], truth_s_m: list[float], road: Road,
+           truth_path: str, scenario: Scenario) -> EstimateTrack:
     paths = {p.name: p for p in road.paths()}
+    planned = scenario.route.planned_exit
 
     def on_map(e: Estimate | None, table: str) -> float | None:
         return None if e is None else round(float(paths[e.path].lookup(getattr(paths[e.path], table), e.s_m)), 1)
@@ -146,6 +159,10 @@ def _track(name: str, estimates: list[Estimate | None], truth_s_m: list[float], 
         wrong_branch=[e is not None and on_wrong_branch(e, truth_path, road) for e in estimates],
         x_m=[on_map(e, "x") for e in estimates],
         y_m=[on_map(e, "y") for e in estimates],
+        branches=[None if e is None else e.branches for e in estimates],
+        callouts=[] if planned is None else callouts(estimates, t_s, truth_s_m, road, planned,
+                                                     scenario.route.callouts_m),
+        missed_exit_call=None if planned is None else missed_exit_call(estimates, t_s, truth_s_m, road, planned),
     )
 
 

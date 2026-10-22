@@ -59,6 +59,15 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Callout */
+        Callout: {
+            /** Distance M */
+            distance_m: number;
+            /** T S */
+            t_s: number;
+            /** Truth To Exit M */
+            truth_to_exit_m: number;
+        };
         /**
          * ChangeInside
          * @description Steady speed up to the tunnel, then a different steady speed inside it.
@@ -150,6 +159,13 @@ export interface components {
             x_m: (number | null)[];
             /** Y M */
             y_m: (number | null)[];
+            /** Branches */
+            branches: ({
+                [key: string]: number;
+            } | null)[];
+            /** Callouts */
+            callouts: components["schemas"]["Callout"][];
+            missed_exit_call: components["schemas"]["MissedExitCall"] | null;
         };
         /** Exit */
         Exit: {
@@ -458,6 +474,15 @@ export interface components {
              */
             shifts: components["schemas"]["Shift"][];
         };
+        /** MissedExitCall */
+        MissedExitCall: {
+            /** T S */
+            t_s: number;
+            /** Path */
+            path: string;
+            /** Truth Past Split M */
+            truth_past_split_m: number;
+        };
         /** MountAngles */
         MountAngles: {
             /**
@@ -580,6 +605,15 @@ export interface components {
              * @default false
              */
             missed_exit: boolean;
+            /**
+             * Callouts M
+             * @description Announce the planned exit this far before it
+             * @default [
+             *       400,
+             *       100
+             *     ]
+             */
+            callouts_m: number[];
         };
         /** Run */
         Run: {
@@ -595,6 +629,8 @@ export interface components {
             shapes: components["schemas"]["PathShape"][];
             /** Exits */
             exits: components["schemas"]["ExitMark"][];
+            /** Missed Exit T S */
+            missed_exit_t_s: number | null;
             /** T S */
             t_s: number[];
             /** Truth S M */
@@ -655,7 +691,11 @@ export interface components {
              */
             speed: components["schemas"]["FreeFlow"] | components["schemas"]["SlowdownAtEntry"] | components["schemas"]["StopAndGo"] | components["schemas"]["FullStop"] | components["schemas"]["ChangeInside"];
             /** @default {
-             *       "missed_exit": false
+             *       "missed_exit": false,
+             *       "callouts_m": [
+             *         400,
+             *         100
+             *       ]
              *     } */
             route: components["schemas"]["Route"];
             /**

@@ -12,8 +12,7 @@ from tunnelsim.sensors.mounting import car_to_phone
 from tunnelsim.sensors.simulated import record_drive
 from tunnelsim.truth import simulate_truth
 
-MISSED_EXIT = "4 · Fork + missed exit"  # needs branch hypotheses, which come later
-HIT_EXITS = [s for s in SCENARIOS if s.name != MISSED_EXIT]
+MISSED_EXIT = "4 · Fork + missed exit"
 
 
 def map_filter(run):
@@ -67,7 +66,7 @@ def test_the_spiral_has_curve_and_grade_landmarks_where_it_starts():
     assert (curve.before, curve.after) == (0, pytest.approx(1 / 35))
 
 
-@pytest.mark.parametrize("scenario", HIT_EXITS, ids=lambda s: s.name)
+@pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda s: s.name)
 def test_map_filter_stays_close_and_its_band_mostly_covers_the_truth(scenario):
     run = scenario_run(scenario.name)
     mf, inside = map_filter(run), in_tunnel(run)
@@ -77,7 +76,7 @@ def test_map_filter_stays_close_and_its_band_mostly_covers_the_truth(scenario):
     assert np.mean(error <= band) > 0.75
 
 
-@pytest.mark.parametrize("scenario", HIT_EXITS, ids=lambda s: s.name)
+@pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda s: s.name)
 def test_map_filter_is_back_on_gps_soon_after_the_exit(scenario):
     run = scenario_run(scenario.name)
     left_at = next(t for t, s in zip(run.t_s, run.truth_s_m) if s > run.tunnels[-1].end_m)

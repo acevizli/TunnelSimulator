@@ -90,6 +90,29 @@
   },
   "components": {
     "schemas": {
+      "Callout": {
+        "properties": {
+          "distance_m": {
+            "type": "number",
+            "title": "Distance M"
+          },
+          "t_s": {
+            "type": "number",
+            "title": "T S"
+          },
+          "truth_to_exit_m": {
+            "type": "number",
+            "title": "Truth To Exit M"
+          }
+        },
+        "type": "object",
+        "required": [
+          "distance_m",
+          "t_s",
+          "truth_to_exit_m"
+        ],
+        "title": "Callout"
+      },
       "ChangeInside": {
         "properties": {
           "speed_kmh": {
@@ -288,6 +311,40 @@
             },
             "type": "array",
             "title": "Y M"
+          },
+          "branches": {
+            "items": {
+              "anyOf": [
+                {
+                  "additionalProperties": {
+                    "type": "number"
+                  },
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Branches"
+          },
+          "callouts": {
+            "items": {
+              "$ref": "#/components/schemas/Callout"
+            },
+            "type": "array",
+            "title": "Callouts"
+          },
+          "missed_exit_call": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MissedExitCall"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -300,7 +357,10 @@
           "error_m",
           "wrong_branch",
           "x_m",
-          "y_m"
+          "y_m",
+          "branches",
+          "callouts",
+          "missed_exit_call"
         ],
         "title": "EstimateTrack"
       },
@@ -734,6 +794,29 @@
         "title": "LooseMount",
         "description": "Starts like a fixed mount, then shifts suddenly at set moments inside the tunnel."
       },
+      "MissedExitCall": {
+        "properties": {
+          "t_s": {
+            "type": "number",
+            "title": "T S"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "truth_past_split_m": {
+            "type": "number",
+            "title": "Truth Past Split M"
+          }
+        },
+        "type": "object",
+        "required": [
+          "t_s",
+          "path",
+          "truth_past_split_m"
+        ],
+        "title": "MissedExitCall"
+      },
       "MountAngles": {
         "properties": {
           "roll_deg": {
@@ -927,6 +1010,18 @@
             "title": "Missed Exit",
             "description": "The car drives past the planned exit",
             "default": false
+          },
+          "callouts_m": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Callouts M",
+            "description": "Announce the planned exit this far before it",
+            "default": [
+              400,
+              100
+            ]
           }
         },
         "type": "object",
@@ -969,6 +1064,17 @@
             },
             "type": "array",
             "title": "Exits"
+          },
+          "missed_exit_t_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missed Exit T S"
           },
           "t_s": {
             "items": {
@@ -1039,6 +1145,7 @@
           "tunnels",
           "shapes",
           "exits",
+          "missed_exit_t_s",
           "t_s",
           "truth_s_m",
           "truth_v_mps",
@@ -1153,7 +1260,11 @@
           "route": {
             "$ref": "#/components/schemas/Route",
             "default": {
-              "missed_exit": false
+              "missed_exit": false,
+              "callouts_m": [
+                400.0,
+                100.0
+              ]
             }
           },
           "mounting": {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { computeRun, fetchScenarios, type Run, type Scenario } from "./api";
 import { TRUTH_COLOR, bandColor, estimatorColor } from "./colors";
+import Events from "./Events";
 import MapView from "./MapView";
 import RealMap from "./RealMap";
 import RoadStrip from "./RoadStrip";
@@ -99,10 +100,15 @@ export default function App() {
             const onPath = e.path[frame];
             const wrong = e.wrong_branch[frame] ? ` — on the wrong branch (${onPath})` : "";
             const band = sigma == null ? "" : ` (band ±${(2 * sigma).toFixed(0)} m)`;
-            return <span key={e.estimator}> · {e.estimator} error {err == null ? "–" : `${err.toFixed(1)} m`}{band}{wrong}</span>;
+            const odds = e.branches[frame];
+            const unsure = odds ? ` — unsure which branch: ${Object.entries(odds)
+              .map(([path, p]) => `${path} ${(100 * p).toFixed(0)}%`).join(", ")}` : "";
+            return <span key={e.estimator}> · {e.estimator} error {err == null ? "–" : `${err.toFixed(1)} m`}{band}{wrong}{unsure}</span>;
           })}
         </span>
       </section>
+
+      <Events run={run} frame={frame} />
 
       <section className="panel">
         <h2>Along-track error</h2>
