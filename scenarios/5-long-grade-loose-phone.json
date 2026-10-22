@@ -1,8 +1,28 @@
 {
   "name": "5 · Long grade + loose phone",
-  "description": "Re-learning how the phone sits after it shifts mid-tunnel. (Loose mounting arrives with the sensor models.)",
+  "description": "Re-learning how the phone sits after it slides 20° mid-tunnel.",
   "seed": 5,
-  "road": { "kind": "long_grade" },
-  "speed": { "kind": "free_flow", "speed_kmh": 70 },
-  "route": { "planned_exit": "Exit" }
+  "road": {
+    "kind": "long_grade"
+  },
+  "speed": {
+    "kind": "free_flow",
+    "speed_kmh": 70
+  },
+  "route": {
+    "planned_exit": "Exit"
+  },
+  "mounting": {
+    "kind": "loose",
+    "shifts": [
+      {
+        "at_fraction": 0.5,
+        "change": {
+          "roll_deg": 0,
+          "pitch_deg": 10,
+          "yaw_deg": 20
+        }
+      }
+    ]
+  }
 }

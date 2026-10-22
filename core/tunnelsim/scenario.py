@@ -10,6 +10,8 @@ from typing import Annotated
 from pydantic import BaseModel, Field, model_validator
 
 from tunnelsim.road import MAIN, Road
+from tunnelsim.sensors.gnss import GpsSpec
+from tunnelsim.sensors.mounting import FixedMount, Mounting
 from tunnelsim.roads import ForkRoad, LongGradeRoad, SpiralRoad, StraightRoad, TwoExitsRoad
 from tunnelsim.speed_profiles import ChangeInside, FreeFlow, FullStop, SlowdownAtEntry, StopAndGo
 
@@ -35,13 +37,6 @@ class Route(BaseModel):
     missed_exit: bool = Field(False, description="The car drives past the planned exit")
 
 
-class CleanGps(BaseModel):
-    """GPS that works normally in the open and is simply absent in tunnels."""
-
-    noise_m: float = Field(3.0, ge=0, description="Horizontal position noise, 1 sigma")
-    speed_noise_mps: float = Field(0.2, ge=0)
-
-
 class Scenario(BaseModel):
     name: str
     description: str = ""
@@ -50,7 +45,8 @@ class Scenario(BaseModel):
     open_road: OpenRoad = OpenRoad()
     speed: SpeedPiece = FreeFlow()
     route: Route = Route()
-    gps: CleanGps = CleanGps()
+    mounting: Mounting = FixedMount()
+    gps: GpsSpec = GpsSpec()
 
     @model_validator(mode="after")
     def _route_fits_road(self):

@@ -15,12 +15,13 @@ def test_there_are_eight_test_scenarios_with_distinct_seeds():
 
 
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda s: s.name)
-def test_every_test_scenario_runs_and_baseline_recovers_after_the_tunnel(scenario):
+def test_every_test_scenario_runs_and_baseline_recovers_once_gps_settles(scenario):
     run = run_scenario(scenario)
     baseline = run.estimates[0]
-    last_exit = run.tunnels[-1].end_m
-    after = [abs(e) for s, e in zip(run.truth_s_m, baseline.error_m) if e is not None and s > last_exit + 30]
-    assert max(after) < 20
+    left_at = next(t for t, s in zip(run.t_s, run.truth_s_m) if s > run.tunnels[-1].end_m)
+    # Once GPS has settled (first fix, biased fixes, converging), the baseline is back on the car.
+    settled = [abs(e) for t, e in zip(run.t_s, baseline.error_m) if e is not None and t > left_at + 10]
+    assert max(settled) < 20
     assert baseline.path[-1] == run.path
 
 

@@ -11,7 +11,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from tunnelsim.road import STEP_M, Path
-from tunnelsim.scenario import Scenario
+from tunnelsim.speed_profiles import SpeedProfileSpec
 
 DT_S = 0.01  # 100 Hz, the rate of the phone's motion sensors
 MAX_ACCEL_MPS2 = 2.0
@@ -39,11 +39,11 @@ class Truth:
     in_tunnel: np.ndarray
 
 
-def simulate_truth(scenario: Scenario, path: Path, rng: np.random.Generator) -> Truth:
+def simulate_truth(speed: SpeedProfileSpec, path: Path, rng: np.random.Generator) -> Truth:
     spans = path.tunnel_spans()
-    target_speed = scenario.speed.driver(spans[0].start_m, spans[-1].end_m)
+    target_speed = speed.driver(spans[0].start_m, spans[-1].end_m)
     ceiling = speed_ceiling(path).tolist()
-    wobble = _wobble(scenario.speed.wobble_kmh / 3.6, rng)
+    wobble = _wobble(speed.wobble_kmh / 3.6, rng)
 
     t, s = 0.0, 0.0
     v = min(target_speed(0, 0, 0), ceiling[0])
