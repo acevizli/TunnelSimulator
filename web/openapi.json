@@ -64,6 +64,28 @@
           }
         }
       }
+    },
+    "/api/sensor-assumptions": {
+      "get": {
+        "summary": "Sensor Assumptions",
+        "operationId": "sensor_assumptions_api_sensor_assumptions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SensorAssumption"
+                  },
+                  "type": "array",
+                  "title": "Response Sensor Assumptions Api Sensor Assumptions Get"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -106,25 +128,55 @@
         "title": "ChangeInside",
         "description": "Steady speed up to the tunnel, then a different steady speed inside it."
       },
-      "CleanGps": {
+      "Coast": {
         "properties": {
-          "noise_m": {
-            "type": "number",
-            "minimum": 0.0,
-            "title": "Noise M",
-            "description": "Horizontal position noise, 1 sigma",
-            "default": 3.0
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
           },
-          "speed_noise_mps": {
+          "duration_s": {
             "type": "number",
             "minimum": 0.0,
-            "title": "Speed Noise Mps",
-            "default": 0.2
+            "title": "Duration S",
+            "description": "Seconds of fake extrapolated fixes after the last real one",
+            "default": 3
           }
         },
         "type": "object",
-        "title": "CleanGps",
-        "description": "GPS that works normally in the open and is simply absent in tunnels."
+        "title": "Coast"
+      },
+      "Converge": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "duration_s": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Duration S",
+            "default": 5
+          },
+          "factor": {
+            "type": "number",
+            "minimum": 1.0,
+            "title": "Factor",
+            "description": "Noise multiplier at the start of converging",
+            "default": 3
+          },
+          "optimism": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Optimism",
+            "description": "Reported accuracy = optimism x actual noise",
+            "default": 0.5
+          }
+        },
+        "type": "object",
+        "title": "Converge"
       },
       "EstimateTrack": {
         "properties": {
@@ -240,6 +292,38 @@
         ],
         "title": "Exit"
       },
+      "ExitBias": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "first_fix_s": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "First Fix S",
+            "description": "Delay before the first fix after the exit",
+            "default": 1
+          },
+          "bad_fixes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Bad Fixes",
+            "description": "How many of the first fixes are biased",
+            "default": 2
+          },
+          "bias_m": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Bias M",
+            "description": "Along-track bias of those fixes; worst cases reach 180 m",
+            "default": 30
+          }
+        },
+        "type": "object",
+        "title": "ExitBias"
+      },
       "ExitMark": {
         "properties": {
           "name": {
@@ -262,6 +346,51 @@
           "planned"
         ],
         "title": "ExitMark"
+      },
+      "Fade": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "distance_m": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Distance M",
+            "description": "Starts this far before the entrance",
+            "default": 50
+          },
+          "factor": {
+            "type": "number",
+            "minimum": 1.0,
+            "title": "Factor",
+            "description": "Noise multiplier at the entrance",
+            "default": 3
+          }
+        },
+        "type": "object",
+        "title": "Fade"
+      },
+      "FixedMount": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "fixed",
+            "title": "Kind",
+            "default": "fixed"
+          },
+          "angles": {
+            "$ref": "#/components/schemas/MountAngles",
+            "default": {
+              "roll_deg": 0.0,
+              "pitch_deg": 70.0,
+              "yaw_deg": 5.0
+            }
+          }
+        },
+        "type": "object",
+        "title": "FixedMount"
       },
       "ForkRoad": {
         "properties": {
@@ -371,14 +500,92 @@
           "s_m": {
             "type": "number",
             "title": "S M"
+          },
+          "phase": {
+            "type": "string",
+            "title": "Phase"
+          },
+          "accuracy_m": {
+            "type": "number",
+            "title": "Accuracy M"
           }
         },
         "type": "object",
         "required": [
           "t_s",
-          "s_m"
+          "s_m",
+          "phase",
+          "accuracy_m"
         ],
         "title": "GpsPoint"
+      },
+      "GpsSpec": {
+        "properties": {
+          "clean": {
+            "type": "boolean",
+            "title": "Clean",
+            "description": "Ignore all portal effects",
+            "default": false
+          },
+          "noise_m": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Noise M",
+            "description": "Open-sky position noise, 1 sigma per axis",
+            "default": 4.0
+          },
+          "speed_noise_mps": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Speed Noise Mps",
+            "default": 0.2
+          },
+          "fade": {
+            "$ref": "#/components/schemas/Fade",
+            "default": {
+              "enabled": true,
+              "distance_m": 50.0,
+              "factor": 3.0
+            }
+          },
+          "multipath": {
+            "$ref": "#/components/schemas/Multipath",
+            "default": {
+              "enabled": true,
+              "zone_m": 30.0,
+              "probability": 0.3,
+              "bias_min_m": 10.0,
+              "bias_max_m": 50.0
+            }
+          },
+          "coast": {
+            "$ref": "#/components/schemas/Coast",
+            "default": {
+              "enabled": true,
+              "duration_s": 3.0
+            }
+          },
+          "exit_bias": {
+            "$ref": "#/components/schemas/ExitBias",
+            "default": {
+              "enabled": true,
+              "first_fix_s": 1.0,
+              "bad_fixes": 2,
+              "bias_m": 30.0
+            }
+          },
+          "converge": {
+            "$ref": "#/components/schemas/Converge",
+            "default": {
+              "enabled": true,
+              "duration_s": 5.0,
+              "factor": 3.0,
+              "optimism": 0.5
+            }
+          }
+        },
+        "type": "object",
+        "title": "GpsSpec"
       },
       "HTTPValidationError": {
         "properties": {
@@ -430,6 +637,102 @@
         "type": "object",
         "title": "LongGradeRoad",
         "description": "A long descent and climb with gentle curves and one exit partway in."
+      },
+      "LooseMount": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "loose",
+            "title": "Kind",
+            "default": "loose"
+          },
+          "angles": {
+            "$ref": "#/components/schemas/MountAngles",
+            "default": {
+              "roll_deg": 0.0,
+              "pitch_deg": 70.0,
+              "yaw_deg": 5.0
+            }
+          },
+          "shifts": {
+            "items": {
+              "$ref": "#/components/schemas/Shift"
+            },
+            "type": "array",
+            "title": "Shifts",
+            "default": [
+              {
+                "at_fraction": 0.5,
+                "change": {
+                  "pitch_deg": 10.0,
+                  "roll_deg": 0.0,
+                  "yaw_deg": 20.0
+                }
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "LooseMount",
+        "description": "Starts like a fixed mount, then shifts suddenly at set moments inside the tunnel."
+      },
+      "MountAngles": {
+        "properties": {
+          "roll_deg": {
+            "type": "number",
+            "title": "Roll Deg",
+            "default": 0
+          },
+          "pitch_deg": {
+            "type": "number",
+            "title": "Pitch Deg",
+            "description": "Default: tilted up toward the driver in a dashboard mount",
+            "default": 70
+          },
+          "yaw_deg": {
+            "type": "number",
+            "title": "Yaw Deg",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "title": "MountAngles"
+      },
+      "Multipath": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "zone_m": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Zone M",
+            "description": "How far into the tunnel fixes still appear",
+            "default": 30
+          },
+          "probability": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Probability",
+            "description": "Chance a fix there is a bounced outlier",
+            "default": 0.3
+          },
+          "bias_min_m": {
+            "type": "number",
+            "title": "Bias Min M",
+            "default": 10
+          },
+          "bias_max_m": {
+            "type": "number",
+            "title": "Bias Max M",
+            "default": 50
+          }
+        },
+        "type": "object",
+        "title": "Multipath"
       },
       "OpenRoad": {
         "properties": {
@@ -551,12 +854,22 @@
             "type": "array",
             "title": "Truth V Mps"
           },
+          "truth_height_m": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Truth Height M"
+          },
           "gps": {
             "items": {
               "$ref": "#/components/schemas/GpsPoint"
             },
             "type": "array",
             "title": "Gps"
+          },
+          "sensors": {
+            "$ref": "#/components/schemas/SensorTraces"
           },
           "estimates": {
             "items": {
@@ -577,7 +890,9 @@
           "t_s",
           "truth_s_m",
           "truth_v_mps",
+          "truth_height_m",
           "gps",
+          "sensors",
           "estimates"
         ],
         "title": "Run"
@@ -680,11 +995,66 @@
               "missed_exit": false
             }
           },
-          "gps": {
-            "$ref": "#/components/schemas/CleanGps",
+          "mounting": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FixedMount"
+              },
+              {
+                "$ref": "#/components/schemas/LooseMount"
+              }
+            ],
+            "title": "Mounting",
             "default": {
-              "noise_m": 3.0,
-              "speed_noise_mps": 0.2
+              "kind": "fixed",
+              "angles": {
+                "pitch_deg": 70.0,
+                "roll_deg": 0.0,
+                "yaw_deg": 5.0
+              }
+            },
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "fixed": "#/components/schemas/FixedMount",
+                "loose": "#/components/schemas/LooseMount"
+              }
+            }
+          },
+          "gps": {
+            "$ref": "#/components/schemas/GpsSpec",
+            "default": {
+              "clean": false,
+              "noise_m": 4.0,
+              "speed_noise_mps": 0.2,
+              "fade": {
+                "distance_m": 50.0,
+                "enabled": true,
+                "factor": 3.0
+              },
+              "multipath": {
+                "bias_max_m": 50.0,
+                "bias_min_m": 10.0,
+                "enabled": true,
+                "probability": 0.3,
+                "zone_m": 30.0
+              },
+              "coast": {
+                "duration_s": 3.0,
+                "enabled": true
+              },
+              "exit_bias": {
+                "bad_fixes": 2,
+                "bias_m": 30.0,
+                "enabled": true,
+                "first_fix_s": 1.0
+              },
+              "converge": {
+                "duration_s": 5.0,
+                "enabled": true,
+                "factor": 3.0,
+                "optimism": 0.5
+              }
             }
           }
         },
@@ -731,6 +1101,106 @@
           "length_m"
         ],
         "title": "Segment"
+      },
+      "SensorAssumption": {
+        "properties": {
+          "sensor": {
+            "type": "string",
+            "title": "Sensor"
+          },
+          "quantity": {
+            "type": "string",
+            "title": "Quantity"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sensor",
+          "quantity",
+          "value",
+          "source"
+        ],
+        "title": "SensorAssumption"
+      },
+      "SensorTraces": {
+        "properties": {
+          "accel_mps2": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Accel Mps2"
+          },
+          "gyro_dps": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Gyro Dps"
+          },
+          "baro_height_m": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Baro Height M"
+          },
+          "mount_deg": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Mount Deg"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accel_mps2",
+          "gyro_dps",
+          "baro_height_m",
+          "mount_deg"
+        ],
+        "title": "SensorTraces",
+        "description": "What the phone recorded, averaged over each output tick so it can be plotted."
+      },
+      "Shift": {
+        "properties": {
+          "at_fraction": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "At Fraction",
+            "description": "When, as a fraction of the way through the tunnel",
+            "default": 0.5
+          },
+          "change": {
+            "$ref": "#/components/schemas/MountAngles",
+            "default": {
+              "roll_deg": 0.0,
+              "pitch_deg": 10.0,
+              "yaw_deg": 20.0
+            }
+          }
+        },
+        "type": "object",
+        "title": "Shift"
       },
       "SlowdownAtEntry": {
         "properties": {

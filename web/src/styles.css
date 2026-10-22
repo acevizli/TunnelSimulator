@@ -16,3 +16,6 @@ button, select { font: inherit; padding: 4px 12px; }
 h2 { font-size: 13px; font-weight: 600; color: #374151; margin: 4px 8px; }
 .description { color: #4b5563; font-size: 14px; margin: 0 0 8px; }
 header select { font-size: 16px; font-weight: 600; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #e5e7eb; }
+th { color: #374151; font-weight: 600; }

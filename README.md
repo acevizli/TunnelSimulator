@@ -23,7 +23,7 @@ Needs [uv](https://docs.astral.sh/uv/) and Node.js.
 ```sh
 uv sync                                              # Python 3.12 + core + server
 uv run pytest                                        # core tests
-uv run uvicorn tunnelsim_server.app:app --port 8000  # API on :8000
+uv run uvicorn tunnelsim_server.app:app --port 8000 --reload --reload-dir core --reload-dir server  # API on :8000
 
 cd web && npm install && npm run dev                 # UI on http://localhost:5173
 ```

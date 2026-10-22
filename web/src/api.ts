@@ -4,6 +4,13 @@ import type { components } from "./api-types";
 export type Scenario = components["schemas"]["Scenario"];
 export type Run = components["schemas"]["Run"];
 export type EstimateTrack = components["schemas"]["EstimateTrack"];
+export type SensorAssumption = components["schemas"]["SensorAssumption"];
+
+export async function fetchSensorAssumptions(): Promise<SensorAssumption[]> {
+  const res = await fetch("/api/sensor-assumptions");
+  if (!res.ok) throw new Error(`GET /api/sensor-assumptions: ${res.status}`);
+  return res.json();
+}
 
 export async function fetchScenarios(): Promise<Scenario[]> {
   const res = await fetch("/api/scenarios");

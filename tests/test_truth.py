@@ -8,7 +8,7 @@ from tunnelsim.truth import MAX_LATERAL_MPS2, simulate_truth
 def drive(**pieces):
     scenario = Scenario.model_validate({"name": "test", "seed": 1, **pieces})
     road = build_road(scenario)
-    return simulate_truth(scenario, road.path(scenario.driven_exit), np.random.default_rng(1)), road
+    return simulate_truth(scenario.speed, road.path(scenario.driven_exit), np.random.default_rng(1)), road
 
 
 def stopped_spells(truth, min_s=3.0):

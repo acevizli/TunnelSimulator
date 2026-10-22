@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { Run } from "./api";
-import { GPS_COLOR, TRUTH_COLOR, estimatorColor } from "./colors";
+import { GPS_COLOR, GPS_PHASE_COLORS, TRUTH_COLOR, estimatorColor } from "./colors";
 
 type Props = { run: Run; frame: number; fromM: number; toM: number; label: string };
 
@@ -50,9 +50,10 @@ export default function RoadStrip({ run, frame, fromM, toM, label }: Props) {
 
     // GPS fixes from the last 5 s
     const t = run.t_s[frame];
-    ctx.fillStyle = GPS_COLOR;
     for (const p of run.gps) {
-      if (p.t_s <= t && p.t_s > t - 5) dot(ctx, x(p.s_m), roadY, 2.5);
+      if (p.t_s > t || p.t_s <= t - 5) continue;
+      ctx.fillStyle = GPS_PHASE_COLORS[p.phase] ?? GPS_COLOR;
+      dot(ctx, x(p.s_m), roadY, 3);
     }
 
     // Estimates: a marker above the road, with a stem down to it
