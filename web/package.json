@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "gen:api": "cd .. && ~/Library/Python/3.8/bin/uv run python -m tunnelsim_server.dump_openapi > web/openapi.json && cd web && openapi-typescript openapi.json -o src/api-types.ts"
+    "gen:api": "cd .. && uv run python -m tunnelsim_server.dump_openapi > web/openapi.json && cd web && openapi-typescript openapi.json -o src/api-types.ts"
   },
   "dependencies": {
     "plotly.js-dist-min": "2.35.2",
