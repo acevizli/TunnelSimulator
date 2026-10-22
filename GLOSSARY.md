@@ -21,6 +21,18 @@ _Avoid_: Odometer, chainage, s-coordinate
 A point inside a tunnel where a branch leaves the road the car is on.
 _Avoid_: Ramp, off-ramp, fork
 
+**Portal**:
+A tunnel's entrance or exit mouth, where GPS fades out or comes back.
+_Avoid_: Mouth, tunnel end
+
+**Route**:
+The path the driver is meant to take, naming which exit (if any) to leave by. What the car actually drives may differ.
+_Avoid_: Plan, navigation, itinerary
+
+**Missed exit**:
+The car drives past the exit its route says to take.
+_Avoid_: Wrong turn
+
 **Car**:
 The single simulated vehicle carrying the phone. There is exactly one per scenario.
 _Avoid_: Vehicle, ego
@@ -28,6 +40,19 @@ _Avoid_: Vehicle, ego
 **Traffic**:
 The surrounding vehicles, never simulated individually; they exist only as the reason the car speeds up, slows down or stops.
 _Avoid_: Other cars, agents
+
+### The drive
+
+**Scenario**:
+One complete simulated drive, made of a road, a speed profile, a mounting, GPS behaviour at the portals, add-ons, a route and a seed.
+_Avoid_: Test case, config, run
+
+**Speed profile**:
+How the car's speed changes over the drive, shaped by traffic.
+_Avoid_: Driving pattern, velocity curve
+
+**Seed**:
+The number that fixes every random choice in a scenario, so the same seed always gives the same drive.
 
 ### Estimation
 
