@@ -133,6 +133,7 @@ function Legend({ run }: { run: Run }) {
       <span><i style={{ background: "#2563eb" }} /> GPS fixes (last 5 s; colours below)</span>
       <span><i style={{ background: "#d1d5db" }} /> tunnel</span>
       <span className="note">Baseline: a GPS-only app that keeps going at the last GPS speed along the planned route once GPS is lost.</span>
+      <span className="note">Map filter: moves the car along the mapped road using the phone's forward acceleration, and keeps correcting it by matching the gyroscope's turn rate and the barometer's climb rate to the curves and slopes on the map (and to GPS while it's good). At a fork it follows both branches and drops the one the sensors don't fit.</span>
     </div>
   );
 }
