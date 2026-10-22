@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sensor-assumptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sensor Assumptions */
+        get: operations["sensor_assumptions_api_sensor_assumptions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -74,22 +91,44 @@ export interface components {
              */
             change_at_fraction: number;
         };
-        /**
-         * CleanGps
-         * @description GPS that works normally in the open and is simply absent in tunnels.
-         */
-        CleanGps: {
+        /** Coast */
+        Coast: {
             /**
-             * Noise M
-             * @description Horizontal position noise, 1 sigma
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Duration S
+             * @description Seconds of fake extrapolated fixes after the last real one
              * @default 3
              */
-            noise_m: number;
+            duration_s: number;
+        };
+        /** Converge */
+        Converge: {
             /**
-             * Speed Noise Mps
-             * @default 0.2
+             * Enabled
+             * @default true
              */
-            speed_noise_mps: number;
+            enabled: boolean;
+            /**
+             * Duration S
+             * @default 5
+             */
+            duration_s: number;
+            /**
+             * Factor
+             * @description Noise multiplier at the start of converging
+             * @default 3
+             */
+            factor: number;
+            /**
+             * Optimism
+             * @description Reported accuracy = optimism x actual noise
+             * @default 0.5
+             */
+            optimism: number;
         };
         /** EstimateTrack */
         EstimateTrack: {
@@ -115,6 +154,32 @@ export interface components {
             /** Branch */
             branch: components["schemas"]["Segment"][];
         };
+        /** ExitBias */
+        ExitBias: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * First Fix S
+             * @description Delay before the first fix after the exit
+             * @default 1
+             */
+            first_fix_s: number;
+            /**
+             * Bad Fixes
+             * @description How many of the first fixes are biased
+             * @default 2
+             */
+            bad_fixes: number;
+            /**
+             * Bias M
+             * @description Along-track bias of those fixes; worst cases reach 180 m
+             * @default 30
+             */
+            bias_m: number;
+        };
         /** ExitMark */
         ExitMark: {
             /** Name */
@@ -123,6 +188,40 @@ export interface components {
             at_m: number;
             /** Planned */
             planned: boolean;
+        };
+        /** Fade */
+        Fade: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Distance M
+             * @description Starts this far before the entrance
+             * @default 50
+             */
+            distance_m: number;
+            /**
+             * Factor
+             * @description Noise multiplier at the entrance
+             * @default 3
+             */
+            factor: number;
+        };
+        /** FixedMount */
+        FixedMount: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "fixed";
+            /** @default {
+             *       "roll_deg": 0,
+             *       "pitch_deg": 70,
+             *       "yaw_deg": 5
+             *     } */
+            angles: components["schemas"]["MountAngles"];
         };
         /**
          * ForkRoad
@@ -211,6 +310,63 @@ export interface components {
             t_s: number;
             /** S M */
             s_m: number;
+            /** Phase */
+            phase: string;
+            /** Accuracy M */
+            accuracy_m: number;
+        };
+        /** GpsSpec */
+        GpsSpec: {
+            /**
+             * Clean
+             * @description Ignore all portal effects
+             * @default false
+             */
+            clean: boolean;
+            /**
+             * Noise M
+             * @description Open-sky position noise, 1 sigma per axis
+             * @default 4
+             */
+            noise_m: number;
+            /**
+             * Speed Noise Mps
+             * @default 0.2
+             */
+            speed_noise_mps: number;
+            /** @default {
+             *       "enabled": true,
+             *       "distance_m": 50,
+             *       "factor": 3
+             *     } */
+            fade: components["schemas"]["Fade"];
+            /** @default {
+             *       "enabled": true,
+             *       "zone_m": 30,
+             *       "probability": 0.3,
+             *       "bias_min_m": 10,
+             *       "bias_max_m": 50
+             *     } */
+            multipath: components["schemas"]["Multipath"];
+            /** @default {
+             *       "enabled": true,
+             *       "duration_s": 3
+             *     } */
+            coast: components["schemas"]["Coast"];
+            /** @default {
+             *       "enabled": true,
+             *       "first_fix_s": 1,
+             *       "bad_fixes": 2,
+             *       "bias_m": 30
+             *     } */
+            exit_bias: components["schemas"]["ExitBias"];
+            /** @default {
+             *       "enabled": true,
+             *       "duration_s": 5,
+             *       "factor": 3,
+             *       "optimism": 0.5
+             *     } */
+            converge: components["schemas"]["Converge"];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -248,6 +404,86 @@ export interface components {
              * @default 2700
              */
             exit_at_m: number;
+        };
+        /**
+         * LooseMount
+         * @description Starts like a fixed mount, then shifts suddenly at set moments inside the tunnel.
+         */
+        LooseMount: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "loose";
+            /** @default {
+             *       "roll_deg": 0,
+             *       "pitch_deg": 70,
+             *       "yaw_deg": 5
+             *     } */
+            angles: components["schemas"]["MountAngles"];
+            /**
+             * Shifts
+             * @default [
+             *       {
+             *         "at_fraction": 0.5,
+             *         "change": {
+             *           "pitch_deg": 10,
+             *           "roll_deg": 0,
+             *           "yaw_deg": 20
+             *         }
+             *       }
+             *     ]
+             */
+            shifts: components["schemas"]["Shift"][];
+        };
+        /** MountAngles */
+        MountAngles: {
+            /**
+             * Roll Deg
+             * @default 0
+             */
+            roll_deg: number;
+            /**
+             * Pitch Deg
+             * @description Default: tilted up toward the driver in a dashboard mount
+             * @default 70
+             */
+            pitch_deg: number;
+            /**
+             * Yaw Deg
+             * @default 5
+             */
+            yaw_deg: number;
+        };
+        /** Multipath */
+        Multipath: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Zone M
+             * @description How far into the tunnel fixes still appear
+             * @default 30
+             */
+            zone_m: number;
+            /**
+             * Probability
+             * @description Chance a fix there is a bounced outlier
+             * @default 0.3
+             */
+            probability: number;
+            /**
+             * Bias Min M
+             * @default 10
+             */
+            bias_min_m: number;
+            /**
+             * Bias Max M
+             * @default 50
+             */
+            bias_max_m: number;
         };
         /**
          * OpenRoad
@@ -311,8 +547,11 @@ export interface components {
             truth_s_m: number[];
             /** Truth V Mps */
             truth_v_mps: number[];
+            /** Truth Height M */
+            truth_height_m: number[];
             /** Gps */
             gps: components["schemas"]["GpsPoint"][];
+            sensors: components["schemas"]["SensorTraces"];
             /** Estimates */
             estimates: components["schemas"]["EstimateTrack"][];
         };
@@ -354,11 +593,52 @@ export interface components {
              *       "missed_exit": false
              *     } */
             route: components["schemas"]["Route"];
+            /**
+             * Mounting
+             * @default {
+             *       "kind": "fixed",
+             *       "angles": {
+             *         "pitch_deg": 70,
+             *         "roll_deg": 0,
+             *         "yaw_deg": 5
+             *       }
+             *     }
+             */
+            mounting: components["schemas"]["FixedMount"] | components["schemas"]["LooseMount"];
             /** @default {
-             *       "noise_m": 3,
-             *       "speed_noise_mps": 0.2
+             *       "clean": false,
+             *       "noise_m": 4,
+             *       "speed_noise_mps": 0.2,
+             *       "fade": {
+             *         "distance_m": 50,
+             *         "enabled": true,
+             *         "factor": 3
+             *       },
+             *       "multipath": {
+             *         "bias_max_m": 50,
+             *         "bias_min_m": 10,
+             *         "enabled": true,
+             *         "probability": 0.3,
+             *         "zone_m": 30
+             *       },
+             *       "coast": {
+             *         "duration_s": 3,
+             *         "enabled": true
+             *       },
+             *       "exit_bias": {
+             *         "bad_fixes": 2,
+             *         "bias_m": 30,
+             *         "enabled": true,
+             *         "first_fix_s": 1
+             *       },
+             *       "converge": {
+             *         "duration_s": 5,
+             *         "enabled": true,
+             *         "factor": 3,
+             *         "optimism": 0.5
+             *       }
              *     } */
-            gps: components["schemas"]["CleanGps"];
+            gps: components["schemas"]["GpsSpec"];
         };
         /** Segment */
         Segment: {
@@ -380,6 +660,46 @@ export interface components {
              * @default false
              */
             tunnel: boolean;
+        };
+        /** SensorAssumption */
+        SensorAssumption: {
+            /** Sensor */
+            sensor: string;
+            /** Quantity */
+            quantity: string;
+            /** Value */
+            value: string;
+            /** Source */
+            source: string;
+        };
+        /**
+         * SensorTraces
+         * @description What the phone recorded, averaged over each output tick so it can be plotted.
+         */
+        SensorTraces: {
+            /** Accel Mps2 */
+            accel_mps2: number[][];
+            /** Gyro Dps */
+            gyro_dps: number[][];
+            /** Baro Height M */
+            baro_height_m: number[];
+            /** Mount Deg */
+            mount_deg: number[][];
+        };
+        /** Shift */
+        Shift: {
+            /**
+             * At Fraction
+             * @description When, as a fraction of the way through the tunnel
+             * @default 0.5
+             */
+            at_fraction: number;
+            /** @default {
+             *       "roll_deg": 0,
+             *       "pitch_deg": 10,
+             *       "yaw_deg": 20
+             *     } */
+            change: components["schemas"]["MountAngles"];
         };
         /**
          * SlowdownAtEntry
@@ -614,6 +934,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sensor_assumptions_api_sensor_assumptions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SensorAssumption"][];
                 };
             };
         };

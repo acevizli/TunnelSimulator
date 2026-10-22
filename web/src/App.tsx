@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { computeRun, fetchScenarios, type Run, type Scenario } from "./api";
 import { TRUTH_COLOR, estimatorColor } from "./colors";
 import RoadStrip from "./RoadStrip";
+import SensorPanel from "./SensorPanel";
 import TimePlot, { type Line } from "./TimePlot";
 
 const OUTPUT_HZ = 10; // matches the core's recording rate
@@ -90,6 +91,7 @@ export default function App() {
         <h2>Speed</h2>
         <TimePlot run={run} frame={frame} lines={speedLines} yTitle="km/h" />
       </section>
+      <SensorPanel run={run} frame={frame} />
     </main>
   );
 }
@@ -101,7 +103,7 @@ function Legend({ run }: { run: Run }) {
       {run.estimates.map((e) => (
         <span key={e.estimator}><i style={{ background: estimatorColor(e.estimator) }} /> {e.estimator}</span>
       ))}
-      <span><i style={{ background: "#2563eb" }} /> GPS fixes (last 5 s)</span>
+      <span><i style={{ background: "#2563eb" }} /> GPS fixes (last 5 s; colours below)</span>
       <span><i style={{ background: "#d1d5db" }} /> tunnel</span>
     </div>
   );
