@@ -1,0 +1,404 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Tunnel Simulator",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/scenarios": {
+      "get": {
+        "summary": "List Scenarios",
+        "operationId": "list_scenarios_api_scenarios_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Scenario"
+                  },
+                  "type": "array",
+                  "title": "Response List Scenarios Api Scenarios Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs": {
+      "post": {
+        "summary": "Create Run",
+        "operationId": "create_run_api_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Scenario"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CleanGps": {
+        "properties": {
+          "noise_m": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Noise M",
+            "description": "Horizontal position noise, 1 sigma",
+            "default": 3.0
+          },
+          "speed_noise_mps": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Speed Noise Mps",
+            "default": 0.2
+          }
+        },
+        "type": "object",
+        "title": "CleanGps",
+        "description": "GPS that works normally outside the tunnel and is simply absent inside."
+      },
+      "EstimateTrack": {
+        "properties": {
+          "estimator": {
+            "type": "string",
+            "title": "Estimator"
+          },
+          "s_m": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "S M"
+          },
+          "v_mps": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "V Mps"
+          },
+          "sigma_m": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Sigma M"
+          },
+          "error_m": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Error M"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estimator",
+          "s_m",
+          "v_mps",
+          "sigma_m",
+          "error_m"
+        ],
+        "title": "EstimateTrack"
+      },
+      "FreeFlowSpeed": {
+        "properties": {
+          "speed_kmh": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Speed Kmh",
+            "default": 80
+          },
+          "wobble_kmh": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Wobble Kmh",
+            "description": "Size of the slow speed variation",
+            "default": 2
+          }
+        },
+        "type": "object",
+        "title": "FreeFlowSpeed",
+        "description": "Steady speed with a gentle, slow wobble around it."
+      },
+      "GpsPoint": {
+        "properties": {
+          "t_s": {
+            "type": "number",
+            "title": "T S"
+          },
+          "s_m": {
+            "type": "number",
+            "title": "S M"
+          }
+        },
+        "type": "object",
+        "required": [
+          "t_s",
+          "s_m"
+        ],
+        "title": "GpsPoint"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Road": {
+        "properties": {
+          "length_m": {
+            "type": "number",
+            "title": "Length M"
+          },
+          "tunnel_start_m": {
+            "type": "number",
+            "title": "Tunnel Start M"
+          },
+          "tunnel_end_m": {
+            "type": "number",
+            "title": "Tunnel End M"
+          }
+        },
+        "type": "object",
+        "required": [
+          "length_m",
+          "tunnel_start_m",
+          "tunnel_end_m"
+        ],
+        "title": "Road",
+        "description": "A straight, flat road with one tunnel on it."
+      },
+      "Run": {
+        "properties": {
+          "scenario": {
+            "$ref": "#/components/schemas/Scenario"
+          },
+          "road": {
+            "$ref": "#/components/schemas/Road"
+          },
+          "t_s": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "T S"
+          },
+          "truth_s_m": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Truth S M"
+          },
+          "truth_v_mps": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Truth V Mps"
+          },
+          "gps": {
+            "items": {
+              "$ref": "#/components/schemas/GpsPoint"
+            },
+            "type": "array",
+            "title": "Gps"
+          },
+          "estimates": {
+            "items": {
+              "$ref": "#/components/schemas/EstimateTrack"
+            },
+            "type": "array",
+            "title": "Estimates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scenario",
+          "road",
+          "t_s",
+          "truth_s_m",
+          "truth_v_mps",
+          "gps",
+          "estimates"
+        ],
+        "title": "Run"
+      },
+      "Scenario": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed"
+          },
+          "road": {
+            "$ref": "#/components/schemas/StraightRoadSpec",
+            "default": {
+              "tunnel_length_m": 2000.0,
+              "open_before_s": 90.0,
+              "open_after_m": 1000.0
+            }
+          },
+          "speed": {
+            "$ref": "#/components/schemas/FreeFlowSpeed",
+            "default": {
+              "speed_kmh": 80.0,
+              "wobble_kmh": 2.0
+            }
+          },
+          "gps": {
+            "$ref": "#/components/schemas/CleanGps",
+            "default": {
+              "noise_m": 3.0,
+              "speed_noise_mps": 0.2
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "seed"
+        ],
+        "title": "Scenario"
+      },
+      "StraightRoadSpec": {
+        "properties": {
+          "tunnel_length_m": {
+            "type": "number",
+            "maximum": 5000.0,
+            "minimum": 500.0,
+            "title": "Tunnel Length M",
+            "default": 2000
+          },
+          "open_before_s": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Open Before S",
+            "description": "Seconds of driving with GPS before the tunnel",
+            "default": 90
+          },
+          "open_after_m": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Open After M",
+            "default": 1000
+          }
+        },
+        "type": "object",
+        "title": "StraightRoadSpec",
+        "description": "Flat, straight road: open road, then the tunnel, then open road."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

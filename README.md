@@ -16,6 +16,31 @@ A driver follows turn-by-turn directions on a phone. The road enters a long tunn
 2. Build a visual simulator: a road with a tunnel, one or more cars driving through it, the sensor data the phone would record, and the true position shown next to the estimate.
 3. Use the simulator to evaluate the approach: how well it works, where it breaks, and why.
 
+## Running it
+
+Needs [uv](https://docs.astral.sh/uv/) and Node.js.
+
+```sh
+uv sync                                              # Python 3.12 + core + server
+uv run pytest                                        # core tests
+uv run uvicorn tunnelsim_server.app:app --port 8000  # API on :8000
+
+cd web && npm install && npm run dev                 # UI on http://localhost:5173
+```
+
+After changing any Pydantic model in the core, regenerate the UI's types with `cd web && npm run gen:api`.
+
+## Layout
+
+| Path | What lives there |
+|---|---|
+| `core/tunnelsim/` | Everything that matters: road, scenario, ground truth, sensors, estimators, evaluation. No UI code. |
+| `core/tunnelsim/run.py` | Plays one scenario end to end; the best place to start reading. |
+| `server/` | Thin FastAPI layer: lists scenarios, computes runs. No logic. |
+| `web/` | React + TypeScript replay view. Types generated from the server's schema. |
+| `scenarios/` | Scenario files (JSON). |
+| `tests/` | pytest tests for the core. |
+
 ## Status
 
-Planning. Open decisions and research are tracked as GitHub issues (see the `wayfinder:map` issue).
+In progress. Decisions and work are tracked as GitHub issues (see the `wayfinder:map` issue).
