@@ -126,6 +126,7 @@ function Legend({ run }: { run: Run }) {
       ))}
       <span><i style={{ background: "#2563eb" }} /> GPS fixes (last 5 s; colours below)</span>
       <span><i style={{ background: "#d1d5db" }} /> tunnel</span>
+      <span className="note">Baseline: a GPS-only app that keeps going at the last GPS speed along the planned route once GPS is lost.</span>
     </div>
   );
 }
