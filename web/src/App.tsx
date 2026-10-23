@@ -136,7 +136,7 @@ export default function App() {
   );
 }
 
-function Legend({ run }: { run: Run }) {
+export function Legend({ run }: { run: Run }) {
   const names = new Set(run.estimates.map((e) => e.estimator));
   return (
     <div className="legend">

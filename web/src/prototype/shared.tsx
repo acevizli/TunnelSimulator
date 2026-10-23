@@ -1,7 +1,7 @@
 // PROTOTYPE (replay layout, throwaway): pieces every layout variant uses. Not production code.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchScenarios, fetchSensorAssumptions, type Run, type Scenario, type SensorAssumption } from "../api";
-import { AXIS_COLORS, BEACON_COLORS, TRUTH_COLOR, bandColor, estimatorColor } from "../colors";
+import { AXIS_COLORS, TRUTH_COLOR, bandColor, estimatorColor } from "../colors";
 import type { Line } from "../TimePlot";
 
 const OUTPUT_HZ = 10;
@@ -258,20 +258,6 @@ export function NowCards({ r, vertical = false }: { r: Replay; vertical?: boolea
           </div>
         );
       })}
-    </div>
-  );
-}
-
-// --- Compact legend -----------------------------------------------------------------------
-
-export function MiniLegend({ run }: { run: Run }) {
-  return (
-    <div className="legend">
-      <span><i style={{ background: TRUTH_COLOR }} /> ground truth</span>
-      {run.estimates.map((e) => <span key={e.estimator}><i style={{ background: estimatorColor(e.estimator) }} /> {e.estimator}</span>)}
-      <span><i style={{ background: "#2563eb" }} /> GPS (last 5 s)</span>
-      <span><i style={{ background: "#d1d5db" }} /> tunnel</span>
-      {run.beacons.length > 0 && <span><i style={{ background: BEACON_COLORS.heard }} /> beacon heard</span>}
     </div>
   );
 }

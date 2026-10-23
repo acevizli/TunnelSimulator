@@ -1,11 +1,12 @@
 // PROTOTYPE variant A, "Workbench": the scenario editor always open on the left; the road and
 // controls pinned at the top; everything else in tabs, so the whole page fits one screen.
 import { useState } from "react";
+import { Legend } from "../App";
 import Events from "../Events";
 import MapView from "../MapView";
 import RoadStrip from "../RoadStrip";
 import TimePlot from "../TimePlot";
-import { AssumptionsTable, MetricsTable, MiniLegend, PlayControls, type Replay, ScenarioEditor, ScenarioPicker, sensorLines } from "./shared";
+import { AssumptionsTable, MetricsTable, PlayControls, type Replay, ScenarioEditor, ScenarioPicker, sensorLines } from "./shared";
 
 export const name = "Workbench: editor sidebar + tabs";
 const TABS = ["Error & speed", "What the driver hears", "Metrics", "Map", "Sensors", "Assumptions"] as const;
@@ -27,7 +28,7 @@ export default function VariantA({ r }: { r: Replay }) {
         <div className="pa-top">
           <RoadStrip run={run} frame={r.frame} fromM={0} toM={run.path_length_m} label="whole road" />
           <RoadStrip run={run} frame={r.frame} fromM={truthS - 150} toM={truthS + 150} label="close-up, ±150 m" />
-          <MiniLegend run={run} />
+          <Legend run={run} />
           <PlayControls r={r} />
         </div>
         <nav className="pa-tabs">

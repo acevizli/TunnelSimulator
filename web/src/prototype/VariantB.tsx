@@ -3,12 +3,13 @@
 // A slim bar with the scenario, seed and playback stays pinned; the editor folds open under it.
 // The real tunnel the road is based on sits small next to the description.
 import { useState } from "react";
+import { Legend } from "../App";
 import Events from "../Events";
 import MapView from "../MapView";
 import RoadStrip from "../RoadStrip";
 import TimePlot from "../TimePlot";
 import type { Run } from "../api";
-import { AssumptionsTable, MetricsTable, MiniLegend, PlayControls, type Replay, ScenarioEditor, ScenarioPicker, sensorLines } from "./shared";
+import { AssumptionsTable, MetricsTable, PlayControls, type Replay, ScenarioEditor, ScenarioPicker, sensorLines } from "./shared";
 
 export const name = "Report: one column";
 
@@ -35,7 +36,7 @@ export default function VariantB({ r }: { r: Replay }) {
       <section className="panel">
         <RoadStrip run={run} frame={r.frame} fromM={0} toM={run.path_length_m} label="whole road" />
         <RoadStrip run={run} frame={r.frame} fromM={truthS - 150} toM={truthS + 150} label="close-up, ±150 m" />
-        <MiniLegend run={run} />
+        <Legend run={run} />
       </section>
       <section className="panel maps">
         <MapView run={run} frame={r.frame} />

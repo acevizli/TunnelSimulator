@@ -3,11 +3,12 @@
 // and the timeline carries the events, so you click a callout or the worst moment to go there.
 // Plots, metrics, sensors, assumptions and the editor live in a drawer that slides up.
 import { useState } from "react";
+import { Legend } from "../App";
 import Events from "../Events";
 import MapView from "../MapView";
 import RoadStrip from "../RoadStrip";
 import TimePlot from "../TimePlot";
-import { AssumptionsTable, EventTimeline, MetricsTable, MiniLegend, NowCards, PlayControls, type Replay, ScenarioEditor, ScenarioPicker, sensorLines } from "./shared";
+import { AssumptionsTable, EventTimeline, MetricsTable, NowCards, PlayControls, type Replay, ScenarioEditor, ScenarioPicker, sensorLines } from "./shared";
 
 export const name = "Cockpit: big map, live cards, event timeline, drawer";
 const DRAWER = ["Error & speed", "Metrics", "What the driver hears", "Sensors", "Assumptions", "Edit scenario"] as const;
@@ -28,7 +29,7 @@ export default function VariantC({ r }: { r: Replay }) {
         <NowCards r={r} vertical />
       </div>
       <RoadStrip run={run} frame={r.frame} fromM={truthS - 150} toM={truthS + 150} label="close-up, ±150 m around the true car" />
-      <MiniLegend run={run} />
+      <Legend run={run} />
       <div className="pc-timeline">
         <PlayControls r={r} slider={false} />
         <EventTimeline r={r} />
