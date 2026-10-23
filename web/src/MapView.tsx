@@ -3,24 +3,24 @@ import Plotly from "plotly.js-dist-min";
 import type { Run } from "./api";
 import { ROUTE_COLOR, TRUTH_COLOR, estimatorColor } from "./colors";
 
-type Props = { run: Run; frame: number; aroundCarM?: number };
+type Props = { run: Run; frame: number; aroundCarM?: number; height?: number };
 
 // The road from above, with every branch: shows which branch the car and each estimate are on.
 // An estimate on a branch the car isn't driving is drawn as a hollow ring.
-export default function MapView({ run, frame, aroundCarM }: Props) {
+export default function MapView({ run, frame, aroundCarM, height = 320 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const traces = [...roadTraces(run), ...movingTraces(run, frame)];
     Plotly.newPlot(ref.current!, traces, {
-      height: 320,
+      height,
       margin: { l: 8, r: 80, t: 8, b: 8 },  // room on the right for branch names
       xaxis: { visible: false },
       yaxis: { visible: false, scaleanchor: "x", scaleratio: 1 },
       legend: { orientation: "h", y: -0.02 },
       showlegend: aroundCarM == null,
     }, { displayModeBar: false, responsive: true });
-  }, [run]);
+  }, [run, height]);
 
   useEffect(() => {
     const div = ref.current!;
