@@ -63,7 +63,8 @@ export default function App() {
 
   const t = run.t_s[frame];
   const truthS = run.truth_s_m[frame];
-  const newSeed = () => setScenario({ ...scenario, seed: Math.floor(Math.random() * 1_000_000) });
+  const setSeed = (seed: number) => { if (Number.isInteger(seed) && seed !== scenario.seed) setScenario({ ...scenario, seed }); };
+  const newSeed = () => setSeed(Math.floor(Math.random() * 1_000_000));
 
   return (
     <main className={computing ? "busy" : ""}>
@@ -72,7 +73,10 @@ export default function App() {
           onChange={(e) => setScenario(scenarios[Number(e.target.value)])}>
           {scenarios.map((s, i) => <option key={s.name} value={i}>{s.name}</option>)}
         </select>
-        <span className="seed">seed {scenario.seed}</span>
+        {/* Typed-in seed (e.g. a worst seed from the measurement report); runs on Enter or leaving the field */}
+        <label className="seed">seed <input type="number" key={scenario.seed} defaultValue={scenario.seed}
+          disabled={computing} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onBlur={(e) => setSeed(Number(e.target.value))} /></label>
         <button onClick={newSeed} disabled={computing}>New seed</button>
         {computing && <span className="computing"><span className="spinner" /> Computing run…</span>}
       </header>

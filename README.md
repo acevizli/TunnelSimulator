@@ -23,6 +23,7 @@ Needs [uv](https://docs.astral.sh/uv/) and Node.js.
 ```sh
 uv sync                                              # Python 3.12 + core + server
 uv run pytest                                        # core tests
+uv run tunnelsim-measure                             # 8 test scenarios x 20 seeds -> results/measurements.md (~3 min)
 uv run uvicorn tunnelsim_server.app:app --port 8000 --reload --reload-dir core --reload-dir server  # API on :8000
 
 cd web && npm install && npm run dev                 # UI on http://localhost:5173
@@ -38,6 +39,9 @@ After changing any Pydantic model in the core, regenerate the UI's types with `c
 | `core/tunnelsim/run.py` | Plays one scenario end to end; the best place to start reading. |
 | `core/tunnelsim/estimators/map_filter.py` | The main estimator; its docstring lists every step it takes, including branch hypotheses at exits. |
 | `core/tunnelsim/callouts.py` | What the driver hears: exit callouts and the missed-exit call, worked out the same way for every estimator. |
+| `core/tunnelsim/metrics.py` | Measuring a run: every metric per estimator, and where, when and in which phase it was worst. |
+| `core/tunnelsim/measure.py` | The measurement command: many seeds per scenario, written to a Markdown report. |
+| `results/measurements.md` | The latest measurement report. Its worst seeds can be typed into the replay page. |
 | `server/` | Thin FastAPI layer: lists scenarios, computes runs. No logic. |
 | `web/` | React + TypeScript replay view. Types generated from the server's schema. |
 | `scenarios/` | Scenario files (JSON). |

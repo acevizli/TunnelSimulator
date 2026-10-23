@@ -112,6 +112,26 @@ _Avoid_: Tag, marker
 The speed the car itself reports to the phone, which carries its own systematic error. Used only as an add-on.
 _Avoid_: Odometry, wheel speed, speedometer
 
+**Phase**:
+Which part of the drive the car is in: before the tunnel, entering, inside, stopped, exiting, between tunnels, after the tunnel. Every worst value is reported with the phase it happened in.
+_Avoid_: Stage, section
+
+**Honesty**:
+How often the car is really inside the uncertainty band while in the tunnel. About 95% matches what the band claims; less means it is too narrow.
+_Avoid_: Consistency, calibration
+
+**Recovery**:
+How long after the tunnel the estimate takes to get within 10 m of the car and stay there.
+_Avoid_: Reacquisition, convergence
+
+**Jump**:
+A sudden move of the shown position from one moment to the next, beyond the car's own motion; what the driver sees as the car snapping to a new place.
+_Avoid_: Glitch, teleport
+
+**Measurement**:
+Every test scenario run over many seeds, with every metric collected into one report. Nothing in it is graded.
+_Avoid_: Benchmark, evaluation run, test suite
+
 **Branch hypothesis**:
 One candidate for which road the car is on after an exit, tracked until the evidence rules it out. The app calls a missed exit only once the route's branch hypothesis has been ruled out.
 _Avoid_: Mode, track
