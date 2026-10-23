@@ -20,6 +20,24 @@ The write-up (approach, assumptions, simulation, results, limitations, next step
 
 ## Running it
 
+### With Docker only
+
+```sh
+docker run --rm -p 8000:8000 ghcr.io/acevizli/tunnelsimulator      # replay page and API on http://localhost:8000
+```
+
+Scenarios saved from the page live inside the container and go away with it; to keep them, add `-v "$PWD/saved:/app/scenarios/saved"`.
+
+The measurement command runs from the same image, writing its report into the current folder's `results/`:
+
+```sh
+docker run --rm -v "$PWD/results:/app/results" ghcr.io/acevizli/tunnelsimulator tunnelsim-measure
+```
+
+The image is rebuilt and published from `main` by [.github/workflows/docker.yml](.github/workflows/docker.yml), for both Intel/AMD and ARM machines. To build it yourself: `docker build -t tunnelsimulator .` (needs BuildKit, the default builder in Docker Desktop; elsewhere install the `buildx` plugin).
+
+### For development
+
 Needs [uv](https://docs.astral.sh/uv/) and Node.js.
 
 ```sh
@@ -52,6 +70,7 @@ After editing `docs/write-up.md`, rebuild the PDF (uses the installed Google Chr
 | `web/` | React + TypeScript replay page: the replay, error plots, every metric (each worst value jumps to its moment), sensor plots and assumptions, and a scenario editor. Types generated from the server's schema. |
 | `scenarios/` | The 8 test scenarios (JSON). `scenarios/saved/` holds the ones saved from the page's editor; tests and the measurement command use only the 8. |
 | `tests/` | pytest tests for the core. |
+| `Dockerfile`, `.github/workflows/docker.yml` | The one-port image (built page served by the API) and the workflow that publishes it. |
 
 ## Status
 
