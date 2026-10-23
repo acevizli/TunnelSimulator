@@ -4,15 +4,16 @@ Each piece is its own model with editable numbers, so a scenario can be
 changed one piece at a time ("same tunnel, but stop-and-go").
 """
 
+import re
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, get_args
 
 from pydantic import BaseModel, Field, model_validator
 
 from tunnelsim.road import MAIN, Road
-from tunnelsim.sensors.addons import AddOns
+from tunnelsim.sensors.addons import AddOns, BeaconSpec, VehicleSpeedSpec
 from tunnelsim.sensors.gnss import GpsSpec
-from tunnelsim.sensors.mounting import FixedMount, Mounting
+from tunnelsim.sensors.mounting import FixedMount, LooseMount, Mounting
 from tunnelsim.roads import ForkRoad, LongGradeRoad, SpiralRoad, StraightRoad, TwoExitsRoad
 from tunnelsim.speed_profiles import ChangeInside, FreeFlow, FullStop, SlowdownAtEntry, StopAndGo
 
@@ -81,3 +82,33 @@ def build_road(scenario: Scenario) -> Road:
 def load_scenarios(folder: Path) -> list[Scenario]:
     """Read every scenario JSON file in `folder`, sorted by file name."""
     return [Scenario.model_validate_json(p.read_text()) for p in sorted(folder.glob("*.json"))]
+
+
+def save_scenario(scenario: Scenario, folder: Path) -> Path:
+    """Write the scenario to `folder`, named after it; a scenario saved earlier under the same name is replaced."""
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f"{re.sub(r'[^a-z0-9]+', '-', scenario.name.lower()).strip('-')}.json"
+    path.write_text(scenario.model_dump_json(indent=2) + "\n")
+    return path
+
+
+class PieceChoices(BaseModel):
+    """Every kind of each piece with its default numbers, for an editor to switch between."""
+
+    road: dict[str, dict]
+    speed: dict[str, dict]
+    mounting: dict[str, dict]
+    add_ons: dict[str, dict]
+    exits: dict[str, list[str]]  # the exits each kind of road has, by road kind
+
+
+def piece_choices() -> PieceChoices:
+    roads = [kind() for kind in get_args(get_args(RoadPiece)[0])]
+    speeds = [kind() for kind in get_args(get_args(SpeedPiece)[0])]
+    return PieceChoices(
+        road={r.kind: r.model_dump() for r in roads},
+        speed={s.kind: s.model_dump() for s in speeds},
+        mounting={m.kind: m.model_dump() for m in (FixedMount(), LooseMount())},
+        add_ons={"vehicle_speed": VehicleSpeedSpec().model_dump(), "beacons": BeaconSpec().model_dump()},
+        exits={r.kind: r.exit_names() for r in roads},
+    )

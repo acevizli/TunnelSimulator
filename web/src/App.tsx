@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { computeRun, fetchScenarios, type Run, type Scenario } from "./api";
+import {
+  computeRun, fetchPieceChoices, fetchScenarios, saveScenario,
+  type EstimatorMetrics, type PieceChoices, type Run, type Scenario,
+} from "./api";
 import { BEACON_COLORS, TRUTH_COLOR, bandColor, estimatorColor } from "./colors";
 import Events from "./Events";
 import MapView from "./MapView";
+import MetricsTable from "./MetricsTable";
 import RealMap from "./RealMap";
 import RoadStrip from "./RoadStrip";
+import ScenarioEditor from "./ScenarioEditor";
 import SensorPanel from "./SensorPanel";
 import TimePlot, { type Line } from "./TimePlot";
 
@@ -12,18 +17,24 @@ const OUTPUT_HZ = 10; // matches the core's recording rate
 const SPEEDS = [1, 5, 10, 25];
 const CLOSE_UP_M = 150;
 
+// One column, read top to bottom: the replay, where the error came from, every metric, and
+// what the phone recorded. The bar with the scenario, seed and playback stays at the top.
 export default function App() {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
+  const [choices, setChoices] = useState<PieceChoices | null>(null);
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [run, setRun] = useState<Run | null>(null);
+  const [metrics, setMetrics] = useState<EstimatorMetrics[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [computing, setComputing] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [frame, setFrame] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(10);
 
   useEffect(() => {
     fetchScenarios().then((list) => { setScenarios(list); setScenario(list[0]); }).catch((e) => setError(String(e)));
+    fetchPieceChoices().then(setChoices).catch((e) => setError(String(e)));
   }, []);
 
   useEffect(() => {
@@ -31,9 +42,10 @@ export default function App() {
     let latest = true; // a slower, older run must not replace the one asked for last
     setPlaying(false);
     setComputing(true);
+    setError(null);
     computeRun(scenario)
-      .then((r) => { if (latest) { setRun(r); setFrame(0); } })
-      .catch((e) => latest && setError(String(e)))
+      .then((r) => { if (latest) { setRun(r.run); setMetrics(r.metrics); setFrame(0); } })
+      .catch((e) => latest && setError(e.message ?? String(e)))
       .finally(() => latest && setComputing(false));
     return () => { latest = false; };
   }, [scenario]);
@@ -61,76 +73,85 @@ export default function App() {
       color: "#9ca3af" }] : []),
   ] : [], [run]);
 
-  if (error) return <main><p className="error">{error}</p></main>;
-  if (!scenario || !run) return <main><p className="computing"><span className="spinner" /> Computing run…</p></main>;
+  if (!scenario || !run || !choices) {
+    return <main>{error ? <p className="error">{error}</p> : <p className="computing"><span className="spinner" /> Computing run…</p>}</main>;
+  }
 
-  const t = run.t_s[frame];
   const truthS = run.truth_s_m[frame];
   const setSeed = (seed: number) => { if (Number.isInteger(seed) && seed !== scenario.seed) setScenario({ ...scenario, seed }); };
   const newSeed = () => setSeed(Math.floor(Math.random() * 1_000_000));
+  const jumpTo = (t: number) => setFrame(Math.max(0, Math.min(run.t_s.length - 1, Math.round((t - run.t_s[0]) * OUTPUT_HZ))));
+  const save = async (s: Scenario) => {
+    const saved = await saveScenario(s);
+    setScenarios(await fetchScenarios());
+    setScenario(saved);
+  };
+  // The picker shows the listed scenario, marked when it has been edited (a new seed is not an edit)
+  const listed = scenarios.findIndex((s) => s.name === scenario.name);
+  const edited = listed < 0 || JSON.stringify({ ...scenarios[listed], seed: 0 }) !== JSON.stringify({ ...scenario, seed: 0 });
 
   return (
     <main className={computing ? "busy" : ""}>
-      <header>
-        <select value={scenarios.findIndex((s) => s.name === scenario.name)}
-          onChange={(e) => setScenario(scenarios[Number(e.target.value)])}>
-          {scenarios.map((s, i) => <option key={s.name} value={i}>{s.name}</option>)}
+      <header className="bar">
+        <select value={listed} onChange={(e) => setScenario(scenarios[Number(e.target.value)])}>
+          {listed < 0 && <option value={-1}>{scenario.name} (edited)</option>}
+          {scenarios.map((s, i) => <option key={s.name} value={i}>{s.name}{i === listed && edited ? " (edited)" : ""}</option>)}
         </select>
         {/* Typed-in seed (e.g. a worst seed from the measurement report); runs on Enter or leaving the field */}
         <label className="seed">seed <input type="number" key={scenario.seed} defaultValue={scenario.seed}
           disabled={computing} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
           onBlur={(e) => setSeed(Number(e.target.value))} /></label>
         <button onClick={newSeed} disabled={computing}>New seed</button>
+        <button onClick={() => setEditing(!editing)}>{editing ? "Close editor" : "Edit scenario…"}</button>
         {computing && <span className="computing"><span className="spinner" /> Computing run…</span>}
+        <div className="playback">
+          <button onClick={() => setPlaying(!playing)}>{playing ? "Pause" : "Play"}</button>
+          <input type="range" min={0} max={run.t_s.length - 1} value={frame} onChange={(e) => setFrame(Number(e.target.value))} />
+          <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
+            {SPEEDS.map((s) => <option key={s} value={s}>{s}×</option>)}
+          </select>
+          <span className="readout">
+            t = {run.t_s[frame].toFixed(1)} s · truth {truthS.toFixed(0)} m on {run.path} at {(run.truth_v_mps[frame] * 3.6).toFixed(0)} km/h
+          </span>
+        </div>
       </header>
-      <p className="description">{scenario.description}</p>
+      {error && <p className="error">{error}</p>}
+      {editing && (
+        <section className="panel">
+          <ScenarioEditor scenario={scenario} choices={choices} computing={computing} run={setScenario} save={save} />
+        </section>
+      )}
 
+      <div className="intro">
+        <p className="description">{scenario.description}</p>
+        <RealMap run={run} />
+      </div>
+
+      <h3>1 · Replay</h3>
       <section className="panel">
         <RoadStrip run={run} frame={frame} fromM={0} toM={run.path_length_m} label="whole road" />
         <RoadStrip run={run} frame={frame} fromM={truthS - CLOSE_UP_M} toM={truthS + CLOSE_UP_M}
           label={`close-up, ±${CLOSE_UP_M} m around the true car`} />
         <Legend run={run} />
       </section>
-
       <section className="panel maps">
         <div><h2>Map, from above</h2><MapView run={run} frame={frame} /></div>
-        <div><h2>The real tunnel this road is based on</h2><RealMap run={run} /></div>
         <div><h2>Close-up, ±300 m around the true car</h2><MapView run={run} frame={frame} aroundCarM={300} /></div>
       </section>
 
-      <section className="controls">
-        <button onClick={() => setPlaying(!playing)}>{playing ? "Pause" : "Play"}</button>
-        <input type="range" min={0} max={run.t_s.length - 1} value={frame}
-          onChange={(e) => setFrame(Number(e.target.value))} />
-        <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
-          {SPEEDS.map((s) => <option key={s} value={s}>{s}×</option>)}
-        </select>
-        <span className="readout">
-          t = {t.toFixed(1)} s · truth {truthS.toFixed(0)} m on {run.path} at {(run.truth_v_mps[frame] * 3.6).toFixed(0)} km/h
-          {run.estimates.map((e) => {
-            const err = e.error_m[frame];
-            const sigma = e.sigma_m[frame];
-            const onPath = e.path[frame];
-            const wrong = e.wrong_branch[frame] ? ` — on the wrong branch (${onPath})` : "";
-            const band = sigma == null ? "" : ` (band ±${(2 * sigma).toFixed(0)} m)`;
-            const odds = e.branches[frame];
-            const unsure = odds ? ` — unsure which branch: ${Object.entries(odds)
-              .map(([path, p]) => `${path} ${(100 * p).toFixed(0)}%`).join(", ")}` : "";
-            return <span key={e.estimator}> · {e.estimator} error {err == null ? "–" : `${err.toFixed(1)} m`}{band}{wrong}{unsure}</span>;
-          })}
-        </span>
-      </section>
-
-      <Events run={run} frame={frame} />
-
+      <h3>2 · Where the error came from</h3>
       <section className="panel">
         <h2>Along-track error</h2>
         <TimePlot run={run} frame={frame} lines={errorLines} yTitle="error (m)" />
-      </section>
-      <section className="panel">
         <h2>Speed</h2>
         <TimePlot run={run} frame={frame} lines={speedLines} yTitle="km/h" />
       </section>
+      <Events run={run} frame={frame} />
+
+      <h3>3 · Every metric</h3>
+      <section className="panel"><MetricsTable metrics={metrics} jumpTo={jumpTo} /></section>
+
+      <h3>4 · What the phone recorded, and what we assumed about it</h3>
       <SensorPanel run={run} frame={frame} />
     </main>
   );
@@ -144,7 +165,7 @@ function Legend({ run }: { run: Run }) {
       {run.estimates.map((e) => (
         <span key={e.estimator}><i style={{ background: estimatorColor(e.estimator) }} /> {e.estimator}</span>
       ))}
-      <span><i style={{ background: "#2563eb" }} /> GPS fixes (last 5 s; colours below)</span>
+      <span><i style={{ background: "#2563eb" }} /> GPS fixes (last 5 s; colours in section 4)</span>
       <span><i style={{ background: "#d1d5db" }} /> tunnel</span>
       {run.beacons.length > 0 && <>
         <span><i style={{ background: BEACON_COLORS.heard }} /> beacon heard</span>

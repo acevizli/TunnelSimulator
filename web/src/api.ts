@@ -3,27 +3,37 @@ import type { components } from "./api-types";
 
 export type Scenario = components["schemas"]["Scenario"];
 export type Run = components["schemas"]["Run"];
+export type MeasuredRun = components["schemas"]["MeasuredRun"];
+export type EstimatorMetrics = components["schemas"]["EstimatorMetrics"];
 export type EstimateTrack = components["schemas"]["EstimateTrack"];
 export type SensorAssumption = components["schemas"]["SensorAssumption"];
+export type PieceChoices = components["schemas"]["PieceChoices"];
 
-export async function fetchSensorAssumptions(): Promise<SensorAssumption[]> {
-  const res = await fetch("/api/sensor-assumptions");
-  if (!res.ok) throw new Error(`GET /api/sensor-assumptions: ${res.status}`);
+export const fetchSensorAssumptions = (): Promise<SensorAssumption[]> => get("/api/sensor-assumptions");
+export const fetchScenarios = (): Promise<Scenario[]> => get("/api/scenarios");
+export const fetchPieceChoices = (): Promise<PieceChoices> => get("/api/scenario-pieces");
+export const computeRun = (scenario: Scenario): Promise<MeasuredRun> => post("/api/runs", scenario);
+export const saveScenario = (scenario: Scenario): Promise<Scenario> => post("/api/scenarios", scenario);
+
+async function get<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`GET ${url}: ${await reason(res)}`);
   return res.json();
 }
 
-export async function fetchScenarios(): Promise<Scenario[]> {
-  const res = await fetch("/api/scenarios");
-  if (!res.ok) throw new Error(`GET /api/scenarios: ${res.status}`);
+async function post<T>(url: string, body: unknown): Promise<T> {
+  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (!res.ok) throw new Error(await reason(res));
   return res.json();
 }
 
-export async function computeRun(scenario: Scenario): Promise<Run> {
-  const res = await fetch("/api/runs", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(scenario),
-  });
-  if (!res.ok) throw new Error(`POST /api/runs: ${res.status}`);
-  return res.json();
+// The server's own words: a rejected scenario says which field is wrong and why
+async function reason(res: Response): Promise<string> {
+  try {
+    const { detail } = await res.json();
+    if (typeof detail === "string") return detail;
+    return detail.map((d: { loc: string[]; msg: string }) => `${d.loc.slice(1).join(" › ")}: ${d.msg}`).join("; ");
+  } catch {
+    return `${res.status} ${res.statusText}`;
+  }
 }

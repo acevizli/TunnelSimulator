@@ -11,8 +11,29 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Scenarios */
+        /**
+         * List Scenarios
+         * @description The test scenarios, then the ones saved from the page.
+         */
         get: operations["list_scenarios_api_scenarios_get"];
+        put?: never;
+        /** Create Scenario */
+        post: operations["create_scenario_api_scenarios_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/scenario-pieces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Scenario Pieces */
+        get: operations["scenario_pieces_api_scenario_pieces_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -222,6 +243,13 @@ export interface components {
             /** Callouts */
             callouts: components["schemas"]["Callout"][];
             missed_exit_call: components["schemas"]["MissedExitCall"] | null;
+        };
+        /** EstimatorMetrics */
+        EstimatorMetrics: {
+            /** Estimator */
+            estimator: string;
+            /** Metrics */
+            metrics: components["schemas"]["Metric"][];
         };
         /** Exit */
         Exit: {
@@ -530,6 +558,33 @@ export interface components {
              */
             shifts: components["schemas"]["Shift"][];
         };
+        /** MeasuredRun */
+        MeasuredRun: {
+            run: components["schemas"]["Run"];
+            /** Metrics */
+            metrics: components["schemas"]["EstimatorMetrics"][];
+        };
+        /** Metric */
+        Metric: {
+            /** Name */
+            name: string;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: number | null;
+            /**
+             * Worse
+             * @default higher
+             * @enum {string}
+             */
+            worse: "higher" | "lower";
+            at?: components["schemas"]["Moment"] | null;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
         /** MissedExitCall */
         MissedExitCall: {
             /** T S */
@@ -538,6 +593,18 @@ export interface components {
             path: string;
             /** Truth Past Split M */
             truth_past_split_m: number;
+        };
+        /**
+         * Moment
+         * @description Where the car really was when something happened.
+         */
+        Moment: {
+            /** T S */
+            t_s: number;
+            /** S M */
+            s_m: number;
+            /** Phase */
+            phase: string;
         };
         /** MountAngles */
         MountAngles: {
@@ -618,6 +685,40 @@ export interface components {
             y_m: number[];
             /** Tunnel */
             tunnel: boolean[];
+        };
+        /**
+         * PieceChoices
+         * @description Every kind of each piece with its default numbers, for an editor to switch between.
+         */
+        PieceChoices: {
+            /** Road */
+            road: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            };
+            /** Speed */
+            speed: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            };
+            /** Mounting */
+            mounting: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            };
+            /** Add Ons */
+            add_ons: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            };
+            /** Exits */
+            exits: {
+                [key: string]: string[];
+            };
         };
         /**
          * RealTunnel
@@ -1128,6 +1229,59 @@ export interface operations {
             };
         };
     };
+    create_scenario_api_scenarios_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Scenario"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Scenario"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scenario_pieces_api_scenario_pieces_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PieceChoices"];
+                };
+            };
+        };
+    };
     create_run_api_runs_post: {
         parameters: {
             query?: never;
@@ -1147,7 +1301,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Run"];
+                    "application/json": components["schemas"]["MeasuredRun"];
                 };
             };
             /** @description Validation Error */

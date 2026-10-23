@@ -43,9 +43,9 @@ After changing any Pydantic model in the core, regenerate the UI's types with `c
 | `core/tunnelsim/metrics.py` | Measuring a run: every metric per estimator, and where, when and in which phase it was worst. |
 | `core/tunnelsim/measure.py` | The measurement command: many seeds per scenario, written to a Markdown report. |
 | `results/measurements.md` | The latest measurement report. Its worst seeds can be typed into the replay page. |
-| `server/` | Thin FastAPI layer: lists scenarios, computes runs. No logic. |
-| `web/` | React + TypeScript replay view. Types generated from the server's schema. |
-| `scenarios/` | Scenario files (JSON). |
+| `server/` | Thin FastAPI layer: lists and saves scenarios, computes runs with their metrics. No logic. |
+| `web/` | React + TypeScript replay page: the replay, error plots, every metric (each worst value jumps to its moment), sensor plots and assumptions, and a scenario editor. Types generated from the server's schema. |
+| `scenarios/` | The 8 test scenarios (JSON). `scenarios/saved/` holds the ones saved from the page's editor; tests and the measurement command use only the 8. |
 | `tests/` | pytest tests for the core. |
 
 ## Status
