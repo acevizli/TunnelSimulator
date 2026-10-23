@@ -8,6 +8,7 @@
     "/api/scenarios": {
       "get": {
         "summary": "List Scenarios",
+        "description": "The test scenarios, then the ones saved from the page.",
         "operationId": "list_scenarios_api_scenarios_get",
         "responses": {
           "200": {
@@ -20,6 +21,60 @@
                   },
                   "type": "array",
                   "title": "Response List Scenarios Api Scenarios Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Scenario",
+        "operationId": "create_scenario_api_scenarios_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Scenario"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Scenario"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scenario-pieces": {
+      "get": {
+        "summary": "Scenario Pieces",
+        "operationId": "scenario_pieces_api_scenario_pieces_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PieceChoices"
                 }
               }
             }
@@ -47,7 +102,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Run"
+                  "$ref": "#/components/schemas/MeasuredRun"
                 }
               }
             }
@@ -476,6 +531,27 @@
           "missed_exit_call"
         ],
         "title": "EstimateTrack"
+      },
+      "EstimatorMetrics": {
+        "properties": {
+          "estimator": {
+            "type": "string",
+            "title": "Estimator"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/Metric"
+            },
+            "type": "array",
+            "title": "Metrics"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estimator",
+          "metrics"
+        ],
+        "title": "EstimatorMetrics"
       },
       "Exit": {
         "properties": {
@@ -907,6 +983,80 @@
         "title": "LooseMount",
         "description": "Starts like a fixed mount, then shifts suddenly at set moments inside the tunnel."
       },
+      "MeasuredRun": {
+        "properties": {
+          "run": {
+            "$ref": "#/components/schemas/Run"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/EstimatorMetrics"
+            },
+            "type": "array",
+            "title": "Metrics"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run",
+          "metrics"
+        ],
+        "title": "MeasuredRun"
+      },
+      "Metric": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "worse": {
+            "type": "string",
+            "enum": [
+              "higher",
+              "lower"
+            ],
+            "title": "Worse",
+            "default": "higher"
+          },
+          "at": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Moment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "unit",
+          "value"
+        ],
+        "title": "Metric"
+      },
       "MissedExitCall": {
         "properties": {
           "t_s": {
@@ -929,6 +1079,30 @@
           "truth_past_split_m"
         ],
         "title": "MissedExitCall"
+      },
+      "Moment": {
+        "properties": {
+          "t_s": {
+            "type": "number",
+            "title": "T S"
+          },
+          "s_m": {
+            "type": "number",
+            "title": "S M"
+          },
+          "phase": {
+            "type": "string",
+            "title": "Phase"
+          }
+        },
+        "type": "object",
+        "required": [
+          "t_s",
+          "s_m",
+          "phase"
+        ],
+        "title": "Moment",
+        "description": "Where the car really was when something happened."
       },
       "MountAngles": {
         "properties": {
@@ -1045,6 +1219,62 @@
         ],
         "title": "PathShape",
         "description": "One path seen from above, every few metres, for the map view."
+      },
+      "PieceChoices": {
+        "properties": {
+          "road": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Road"
+          },
+          "speed": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Speed"
+          },
+          "mounting": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Mounting"
+          },
+          "add_ons": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Add Ons"
+          },
+          "exits": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Exits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "road",
+          "speed",
+          "mounting",
+          "add_ons",
+          "exits"
+        ],
+        "title": "PieceChoices",
+        "description": "Every kind of each piece with its default numbers, for an editor to switch between."
       },
       "RealTunnel": {
         "properties": {

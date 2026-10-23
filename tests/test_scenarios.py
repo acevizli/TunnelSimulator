@@ -3,7 +3,7 @@ from conftest import SCENARIOS, scenario_run
 from pydantic import ValidationError
 
 from tunnelsim.run import run_scenario
-from tunnelsim.scenario import Scenario
+from tunnelsim.scenario import Scenario, load_scenarios, piece_choices, save_scenario
 
 
 def test_there_are_eight_test_scenarios_with_distinct_seeds():
@@ -31,3 +31,21 @@ def test_same_seed_same_run_and_new_seed_new_run():
 def test_route_must_name_an_exit_on_the_road():
     with pytest.raises(ValidationError):
         Scenario.model_validate({"name": "t", "seed": 1, "route": {"planned_exit": "Exit A"}})
+
+
+def test_a_saved_scenario_loads_back_the_same(tmp_path):
+    edited = SCENARIOS[3].model_copy(update={"name": "Fork, but stop-and-go!", "seed": 42})
+    path = save_scenario(edited, tmp_path)
+    assert path.name == "fork-but-stop-and-go.json"
+    assert load_scenarios(tmp_path) == [edited]
+    save_scenario(edited.model_copy(update={"seed": 43}), tmp_path)  # same name: replaced
+    assert [s.seed for s in load_scenarios(tmp_path)] == [43]
+
+
+def test_the_editor_can_switch_every_piece_to_any_kind_with_its_defaults():
+    choices = piece_choices()
+    for road in choices.road.values():
+        for speed in choices.speed.values():
+            Scenario.model_validate({"name": "t", "seed": 1, "road": road, "speed": speed,
+                                     "mounting": choices.mounting["loose"], "add_ons": choices.add_ons})
+    assert choices.exits["fork"] == ["Fork right"] and choices.exits["straight"] == []
