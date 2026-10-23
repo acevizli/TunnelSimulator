@@ -4,12 +4,54 @@ Code, README and run instructions: [github.com/acevizli/TunnelSimulator](https:/
 
 ## Approach
 
-Two estimators run on identical sensor data:
+Two estimators get exactly the same sensor data, so any difference between them comes from the method.
 
-- **Baseline**: a GPS-only app. Once GPS is lost it keeps going at the last GPS speed along the planned route.
-- **Map filter** (the approach): a Kalman filter in one dimension, *distance along the known road*. In a single-lane tunnel the car can only be on the road, and the exit callout depends only on how far along it is; a 3D inertial solution on phone sensors drifts hundreds of metres to kilometres over 5 km and buys nothing sideways ([ADR 0001](https://github.com/acevizli/TunnelSimulator/blob/main/docs/adr/0001-map-constrained-1d-ekf.md)). State: distance, speed, accelerometer bias, gyro bias, phone-to-car yaw, gyro scale error. Every 0.1 s it predicts from the forward acceleration (minus bias and the gravity the map's slope leaks in), then corrects: **stops** from the drop in road vibration (speed = 0); **curves**, turn rate = speed × map curvature; **slopes**, barometric climb rate = speed × map grade; **landmarks**, a curve or grade change seen by the sensors near one on the map fixes position. The phone's mounting is learned from GPS before the tunnel; a loose phone turning in its holder is followed with the gyro. GPS is checked against the prediction, ignored inside, and only trusted again after three agreeing fixes at the exit, then blended in without a jump.
-- **Exits**: when the uncertainty band reaches a split, the filter copies itself onto each branch. Each copy is scored on how well its branch's curves and slopes explain the gyro and barometer, and dropped below 1 % of the best. *Missed exit* = estimate past the split and the route's branch ruled out. Callouts at 400 m and 100 m fire on the cautious edge of the band (estimate + 2σ).
-- **Add-ons**, each run as an extra copy of the filter so the gain is measured: the **car's own speed** (via OBD / Android Auto / CarPlay; its scale and offset learned only while GPS is trusted, held fixed inside) and **tunnel beacons** every 35 m (each heard beacon is a gated position fix).
+The **baseline** is what a GPS-only navigation app does. When GPS drops out, it keeps moving the car along the planned route at the last speed GPS reported.
+
+The **map filter** is the proposed approach, described below.
+
+### One number along the road
+
+In a single-lane tunnel the car can only be on the road, so its position comes down to one number: how many metres along the road it is. That number is also all an exit callout needs. The map filter therefore estimates distance along the known road rather than a position in 3D. A 3D inertial solution on phone sensors drifts by hundreds of metres to kilometres over a 5 km tunnel, and the sideways accuracy it would add is no use with one lane ([ADR 0001](https://github.com/acevizli/TunnelSimulator/blob/main/docs/adr/0001-map-constrained-1d-ekf.md)).
+
+It is a Kalman filter. It keeps a best guess for each quantity together with how unsure it is, moves the guess forward with the motion sensors, and pulls it back when a measurement disagrees, trusting each source according to how noisy it is. Besides distance and speed, it learns the sensor errors that would otherwise make the distance drift:
+
+- the accelerometer's bias, a constant offset in its forward reading;
+- the gyroscope's bias, and its scale error (it reads every turn rate slightly off);
+- the yaw of the phone in its holder: how far the phone's idea of "forward" is turned from the car's.
+
+### What happens every 0.1 s
+
+1. **Predict.** The forward acceleration the phone measures moves the speed and distance on, after removing the learned bias and the share of gravity that the road's slope (known from the map) leaks into the reading.
+2. **Stops.** A standing car has almost no road vibration. When the vibration disappears, the filter sets the speed to zero. Without this, a small accelerometer bias keeps "driving" the car forward through every stop in a traffic jam.
+3. **Curves.** In a curve, the gyroscope's turn rate equals speed times the road's curvature, which the map knows. So a curve measures speed. On a straight the expected turn rate is zero, so whatever the gyroscope reads there is its bias.
+4. **Slopes.** On a slope, the barometer's climb rate equals speed times the road's grade, so a slope measures speed as well.
+5. **Landmarks.** When the gyroscope or barometer sees a curve start or end, or a change of slope, and the map has one nearby, that fixes the position itself, not only the speed.
+
+Each check carries its own noise, and the filter weighs it against how unsure its current guess is. The output is a position with an uncertainty band (±2σ) that widens while there is nothing to check against and narrows at each curve, slope or landmark.
+
+### Before the tunnel, and back to GPS
+
+Before the tunnel GPS is still good. The filter uses it to work out how the phone sits in the car and to learn both sensor biases, so it enters the tunnel with those errors already measured. At the entrance it redoes this alignment with everything recorded so far and replays the drive with it. A phone that turns in a loose holder shows up as a rotation the car itself cannot make; the filter follows it with the gyroscope and stops trusting the bias it had learned.
+
+Inside the tunnel GPS is not used at all. Near a portal, fixes are often wrong in ways the phone does not report: some bounce off the walls, and some are positions the phone extrapolates on its own. After the exit, GPS is trusted again only once three fixes outside agree with each other, and the shown position then slides over to it instead of jumping. Ten agreeing fixes overrule the filter however sure it is, so it cannot stay stuck on a wrong belief.
+
+### Exits: following both branches
+
+Where the road splits, the car could go either way, and there is no GPS to say which. Shortly before the uncertainty band reaches a split, the filter starts a copy of itself that assumes the other branch (a branch hypothesis). Both copies get every sensor reading. At every step each copy is scored on how well its own branch's map explains what the gyroscope and barometer just measured: a branch that bends left predicts a left turn, a branch that climbs predicts rising height. A copy a hundred times less likely than the best is dropped. Before there is any evidence, the branch on the planned route is slightly favoured. The position shown is the most likely copy's.
+
+A missed exit is called when the estimate is past the split on another branch and the copy for the route's branch has been dropped.
+
+### Callouts
+
+"Exit in 400 m" and "exit in 100 m" are said when the cautious edge of the band (estimate + 2σ, the furthest along the car plausibly is) reaches that distance before the exit. The less certain the filter is, the earlier the callout comes.
+
+### Add-ons
+
+Two optional sources, each run as a separate copy of the map filter so its gain over the phone alone can be measured:
+
+- The car's own speed reading, through an OBD dongle, Android Auto or CarPlay. It reads a few percent off, so the filter learns its scale and offset against GPS before the tunnel and holds them fixed inside, where nothing reliable is left to learn them from.
+- Tunnel beacons every 35 m. Each beacon heard is a position fix, checked against the prediction like GPS. A beacon on another branch moves the estimate onto that branch.
 
 ## Assumptions
 

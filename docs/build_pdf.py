@@ -15,6 +15,7 @@ STYLE = """
 body { font: 8.6pt/1.36 -apple-system, "Helvetica Neue", Arial, sans-serif; color: #111; }
 h1 { font-size: 14pt; margin: 0 0 3pt; }
 h2 { font-size: 10pt; margin: 8pt 0 2pt; border-bottom: 0.5pt solid #bbb; break-after: avoid; }
+h3 { font-size: 9pt; margin: 6pt 0 1pt; break-after: avoid; }
 p, ul, ol { margin: 2pt 0; }
 ul, ol { padding-left: 13pt; }
 li { margin: 1pt 0; }
