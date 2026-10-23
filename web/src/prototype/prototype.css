@@ -54,6 +54,11 @@
 .pb-bar { position: sticky; top: 0; z-index: 10; background: #f9fafb; padding: 8px 0; border-bottom: 1px solid #e5e7eb;
   display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .pb-bar .p-play { flex: 1 1 480px; flex-wrap: nowrap; }
+.pb-intro { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; margin-top: 8px; }
+.pb-intro .description { flex: 1; }
+.pb-realmap { margin: 0; width: 340px; flex-shrink: 0; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+.pb-realmap iframe { width: 100%; height: 190px; border: 0; display: block; }
+.pb-realmap figcaption { font-size: 12px; color: #4b5563; padding: 4px 8px; }
 .pb-h { margin: 20px 0 4px; font-size: 15px; }
 
 /* C: cockpit */
