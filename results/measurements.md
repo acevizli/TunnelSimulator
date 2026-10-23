@@ -203,7 +203,7 @@ Vehicle speed learned at one speed before the tunnel (70 km/h) and used at 100 k
 
 ## 8 · Straight 5 km + stop-and-go + beacons
 
-The fix for scenario 2: beacons every 35 m.
+Scenario 2's tunnel and traffic (straight, flat, 5 km, stop-and-go), now with beacons on the walls every 35 m. With no curves or slopes to recognise, the phone alone can only add up its own motion, so its error grows the further it drives. Each beacon heard tells it where it is to within about 10 m, so the error stays at a few metres however long the tunnel is.
 
 | Metric | Estimator | Median | 95th percentile | Worst | Worst run |
 |---|---|---|---|---|---|
