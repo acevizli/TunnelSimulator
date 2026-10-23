@@ -93,7 +93,7 @@ A place on the road map the phone's own sensors can recognise: where a curve sta
 _Avoid_: Feature, anchor
 
 **Add-on**:
-An optional information source from outside the phone (vehicle speed, tunnel beacons) that can be switched on to measure how much it improves the estimate.
+An optional information source from outside the phone (vehicle speed, tunnel beacons) that can be switched on to measure how much it improves the estimate. Each one switched on adds a copy of the map filter that also uses it, run next to the plain map filter on the same data.
 _Avoid_: Aid, plugin, extra sensor
 
 **Callout**:

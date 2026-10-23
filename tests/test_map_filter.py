@@ -38,7 +38,7 @@ def approach(name):
     road = build_road(scenario)
     path = road.path(scenario.driven_exit)
     truth = simulate_truth(scenario.speed, path, np.random.default_rng(scenario.seed))
-    rec = record_drive(truth, scenario.mounting, scenario.gps, scenario.seed)
+    rec = record_drive(truth, scenario.mounting, scenario.gps, scenario.add_ons, road, scenario.seed)
     entered = float(np.interp(path.tunnel_spans()[0].start_m, truth.s_m, truth.t_s))
     before = rec.imu.t_s < entered
     fixes = [f for f in rec.gnss.fixes if f.t_s < entered]

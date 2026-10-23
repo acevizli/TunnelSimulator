@@ -1,7 +1,8 @@
 {
   "name": "8 · Straight 5 km + stop-and-go + beacons",
-  "description": "The fix for scenario 2: beacons every 35 m. (Beacons arrive later.)",
+  "description": "Scenario 2's tunnel and traffic (straight, flat, 5 km, stop-and-go), now with beacons on the walls every 35 m. With no curves or slopes to recognise, the phone alone can only add up its own motion, so its error grows the further it drives. Each beacon heard tells it where it is to within about 10 m, so the error stays at a few metres however long the tunnel is.",
   "seed": 8,
   "road": { "kind": "straight", "tunnel_length_m": 5000 },
-  "speed": { "kind": "stop_and_go", "speed_kmh": 80, "go_kmh": 30, "go_s": 20, "stop_s": 10 }
+  "speed": { "kind": "stop_and_go", "speed_kmh": 80, "go_kmh": 30, "go_s": 20, "stop_s": 10 },
+  "add_ons": { "beacons": {} }
 }

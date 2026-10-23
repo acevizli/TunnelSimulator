@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { computeRun, fetchScenarios, type Run, type Scenario } from "./api";
-import { TRUTH_COLOR, bandColor, estimatorColor } from "./colors";
+import { BEACON_COLORS, TRUTH_COLOR, bandColor, estimatorColor } from "./colors";
 import Events from "./Events";
 import MapView from "./MapView";
 import RealMap from "./RealMap";
@@ -56,6 +56,9 @@ export default function App() {
     { name: "ground truth", y: run.truth_v_mps.map((v) => v * 3.6), color: TRUTH_COLOR },
     ...run.estimates.map((e) => ({ name: e.estimator, y: e.v_mps.map((v) => v == null ? null : v * 3.6),
       color: estimatorColor(e.estimator), dash: "dot" as const })),
+    // What the car itself reported (vehicle-speed add-on), with its own error in it
+    ...(run.sensors.vehicle_speed_mps.length ? [{ name: "car's own reading", y: run.sensors.vehicle_speed_mps.map((v) => v * 3.6),
+      color: "#9ca3af" }] : []),
   ] : [], [run]);
 
   if (error) return <main><p className="error">{error}</p></main>;
@@ -134,6 +137,7 @@ export default function App() {
 }
 
 function Legend({ run }: { run: Run }) {
+  const names = new Set(run.estimates.map((e) => e.estimator));
   return (
     <div className="legend">
       <span><i style={{ background: TRUTH_COLOR }} /> ground truth</span>
@@ -142,8 +146,15 @@ function Legend({ run }: { run: Run }) {
       ))}
       <span><i style={{ background: "#2563eb" }} /> GPS fixes (last 5 s; colours below)</span>
       <span><i style={{ background: "#d1d5db" }} /> tunnel</span>
+      {run.beacons.length > 0 && <>
+        <span><i style={{ background: BEACON_COLORS.heard }} /> beacon heard</span>
+        <span><i style={{ background: BEACON_COLORS.unheard }} /> beacon not (yet) heard</span>
+        <span><i style={{ background: BEACON_COLORS.dead }} /> dead beacon</span>
+      </>}
       <span className="note">Baseline: a GPS-only app that keeps going at the last GPS speed along the planned route once GPS is lost.</span>
       <span className="note">Map filter: moves the car along the mapped road using the phone's forward acceleration, and keeps correcting it by matching the gyroscope's turn rate and the barometer's climb rate to the curves and slopes on the map (and to GPS while it's good). At a fork it follows both branches and drops the one the sensors don't fit.</span>
+      {names.has("map filter + vehicle speed") && <span className="note">Map filter + vehicle speed: the same, plus the speed the car itself reports. The car's reading is a few % off; its scale and offset are learned against GPS before the tunnel and then held.</span>}
+      {names.has("map filter + beacons") && <span className="note">Map filter + beacons: the same, plus a position fix each time it hears a tunnel beacon (one every 35 m, some unheard or dead). A beacon on another branch puts the car on that branch.</span>}
     </div>
   );
 }

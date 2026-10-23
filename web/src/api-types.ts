@@ -59,6 +59,52 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AddOns
+         * @description Off unless set. Each one switched on adds a copy of the map filter that also uses it.
+         */
+        AddOns: {
+            vehicle_speed?: components["schemas"]["VehicleSpeedSpec"] | null;
+            beacons?: components["schemas"]["BeaconSpec"] | null;
+        };
+        /**
+         * BeaconMark
+         * @description A beacon on the driven path (add-on), and what happened when the car passed it.
+         */
+        BeaconMark: {
+            /** S M */
+            s_m: number;
+            /** Dead */
+            dead: boolean;
+            /** Heard T S */
+            heard_t_s: number | null;
+        };
+        /** BeaconSpec */
+        BeaconSpec: {
+            /**
+             * Spacing M
+             * @default 35
+             */
+            spacing_m: number;
+            /**
+             * Miss Rate
+             * @description Chance a pass goes unheard
+             * @default 0.05
+             */
+            miss_rate: number;
+            /**
+             * Position Noise M
+             * @description Where along the road a pass is heard, 1 sigma around the beacon
+             * @default 10
+             */
+            position_noise_m: number;
+            /**
+             * Dead
+             * @description Beacons in these stretches never answer
+             * @default []
+             */
+            dead: components["schemas"]["DeadStretch"][];
+        };
         /** Callout */
         Callout: {
             /** Distance M */
@@ -138,6 +184,16 @@ export interface components {
              * @default 0.5
              */
             optimism: number;
+        };
+        /**
+         * DeadStretch
+         * @description A stretch of tunnel whose beacons are dead, in metres from the tunnel entrance.
+         */
+        DeadStretch: {
+            /** Start M */
+            start_m: number;
+            /** End M */
+            end_m: number;
         };
         /** EstimateTrack */
         EstimateTrack: {
@@ -629,6 +685,8 @@ export interface components {
             shapes: components["schemas"]["PathShape"][];
             /** Exits */
             exits: components["schemas"]["ExitMark"][];
+            /** Beacons */
+            beacons: components["schemas"]["BeaconMark"][];
             /** Missed Exit T S */
             missed_exit_t_s: number | null;
             /** T S */
@@ -744,6 +802,8 @@ export interface components {
              *       }
              *     } */
             gps: components["schemas"]["GpsSpec"];
+            /** @default {} */
+            add_ons: components["schemas"]["AddOns"];
         };
         /** Segment */
         Segment: {
@@ -790,6 +850,8 @@ export interface components {
             baro_height_m: number[];
             /** Mount Deg */
             mount_deg: number[][];
+            /** Vehicle Speed Mps */
+            vehicle_speed_mps: number[];
         };
         /** Shift */
         Shift: {
@@ -1004,6 +1066,38 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** VehicleSpeedSpec */
+        VehicleSpeedSpec: {
+            /**
+             * K
+             * @description Scale: the car reads this many times its true speed
+             * @default 1.03
+             */
+            k: number;
+            /**
+             * B Mps
+             * @description Offset added to every reading while moving
+             * @default 0.3
+             */
+            b_mps: number;
+            /**
+             * Bend Mps
+             * @description Extra error at 100 km/h, growing with speed squared; the estimator doesn't model it
+             * @default 0
+             */
+            bend_mps: number;
+            /**
+             * Noise Mps
+             * @description 1 sigma per reading
+             * @default 0.1
+             */
+            noise_mps: number;
+            /**
+             * Rate Hz
+             * @default 10
+             */
+            rate_hz: number;
         };
     };
     responses: never;

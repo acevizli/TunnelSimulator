@@ -10,6 +10,7 @@ from typing import Annotated
 from pydantic import BaseModel, Field, model_validator
 
 from tunnelsim.road import MAIN, Road
+from tunnelsim.sensors.addons import AddOns
 from tunnelsim.sensors.gnss import GpsSpec
 from tunnelsim.sensors.mounting import FixedMount, Mounting
 from tunnelsim.roads import ForkRoad, LongGradeRoad, SpiralRoad, StraightRoad, TwoExitsRoad
@@ -48,6 +49,7 @@ class Scenario(BaseModel):
     route: Route = Route()
     mounting: Mounting = FixedMount()
     gps: GpsSpec = GpsSpec()
+    add_ons: AddOns = AddOns()
 
     @model_validator(mode="after")
     def _route_fits_road(self):

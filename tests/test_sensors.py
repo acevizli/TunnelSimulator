@@ -12,7 +12,7 @@ def drive(**pieces):
     scenario = Scenario.model_validate({"name": "test", "seed": 3, **pieces})
     road = build_road(scenario)
     truth = simulate_truth(scenario.speed, road.path(scenario.driven_exit), np.random.default_rng(3))
-    return truth, record_drive(truth, scenario.mounting, scenario.gps, scenario.seed)
+    return truth, record_drive(truth, scenario.mounting, scenario.gps, scenario.add_ons, road, scenario.seed)
 
 
 def test_mount_angles_turn_gravity_onto_the_expected_phone_axis():

@@ -16,9 +16,10 @@ from tunnelsim.estimators.map_filter import MapFilter
 from tunnelsim.evaluation import along_track_error, on_wrong_branch
 from tunnelsim.road import Path, Road, Span
 from tunnelsim.scenario import Scenario, build_road
+from tunnelsim.sensors.addons import Beacon, is_dead, on_path, place_beacons
 from tunnelsim.sensors.baro import pressure_to_height
 from tunnelsim.sensors.simulated import Recording, SimulatedSource, record_drive
-from tunnelsim.sensors.source import GnssFix
+from tunnelsim.sensors.source import GnssFix, VehicleSpeedSample
 from tunnelsim.truth import DT_S, Truth, simulate_truth
 
 OUTPUT_HZ = 10  # how often the result records the state; sensors run faster
@@ -38,6 +39,15 @@ class SensorTraces(BaseModel):
     gyro_dps: list[list[float]]  # degrees per second
     baro_height_m: list[float]  # height from the barometer, relative to the start
     mount_deg: list[list[float]]  # true roll, pitch, yaw of the phone in the car
+    vehicle_speed_mps: list[float]  # what the car reported (add-on); empty when off
+
+
+class BeaconMark(BaseModel):
+    """A beacon on the driven path (add-on), and what happened when the car passed it."""
+
+    s_m: float
+    dead: bool
+    heard_t_s: float | None  # None: dead, or the pass went unheard
 
 
 class ExitMark(BaseModel):
@@ -78,6 +88,7 @@ class Run(BaseModel):
     tunnels: list[Span]  # along the driven path
     shapes: list[PathShape]
     exits: list[ExitMark]
+    beacons: list[BeaconMark]  # empty unless the beacon add-on is on
     missed_exit_t_s: float | None  # when the car really drove past its planned exit
     t_s: list[float]
     truth_s_m: list[float]
@@ -95,10 +106,17 @@ def run_scenario(scenario: Scenario) -> Run:
     road = build_road(scenario)
     driven = road.path(scenario.driven_exit)
     truth = simulate_truth(scenario.speed, driven, rng)
-    recording = record_drive(truth, scenario.mounting, scenario.gps, scenario.seed)
+    recording = record_drive(truth, scenario.mounting, scenario.gps, scenario.add_ons, road, scenario.seed)
 
     source = SimulatedSource(recording.samples())
-    estimators: list[Estimator] = [Baseline(road, scenario.planned_path), MapFilter(road, scenario.planned_path)]
+    planned, add_ons = scenario.planned_path, scenario.add_ons
+    beacons = None if add_ons.beacons is None else place_beacons(road, add_ons.beacons.spacing_m)
+    # Each add-on switched on adds a copy of the map filter that also uses it, next to the plain one.
+    estimators: list[Estimator] = [Baseline(road, planned), MapFilter(road, planned)]
+    if add_ons.vehicle_speed is not None:
+        estimators.append(MapFilter(road, planned, vehicle_speed=True))
+    if beacons is not None:
+        estimators.append(MapFilter(road, planned, beacons=beacons))
     history: dict[str, list[Estimate | None]] = {e.name: [] for e in estimators}
 
     ticks = range(0, len(truth.t_s), round(1 / (OUTPUT_HZ * DT_S)))
@@ -125,6 +143,7 @@ def run_scenario(scenario: Scenario) -> Run:
         tunnels=driven.tunnel_spans(),
         shapes=[_shape(p) for p in road.paths()],
         exits=[ExitMark(name=e.name, at_m=e.at_m, planned=e.name == scenario.route.planned_exit) for e in road.exits],
+        beacons=[] if beacons is None else _beacon_marks(beacons, recording, scenario, road, driven.name),
         missed_exit_t_s=missed_at,
         t_s=t_out,
         truth_s_m=truth_s,
@@ -166,6 +185,13 @@ def _track(name: str, estimates: list[Estimate | None], t_s: list[float], truth_
     )
 
 
+def _beacon_marks(beacons: list[Beacon], recording: Recording, scenario: Scenario, road: Road,
+                  driven: str) -> list[BeaconMark]:
+    heard = {b.beacon_id: b.t_s for b in recording.beacons}
+    return [BeaconMark(s_m=b.s_m, dead=is_dead(b, scenario.add_ons.beacons, road), heard_t_s=heard.get(b.id))
+            for b in beacons if on_path(b, driven, road)]
+
+
 def _shape(path: Path, every_m: int = 5) -> PathShape:
     return PathShape(
         name=path.name,
@@ -197,4 +223,13 @@ def _traces(recording: Recording, ticks: list[int]) -> SensorTraces:
         gyro_dps=averaged(np.degrees(recording.imu.gyro)),
         baro_height_m=np.round(np.interp(t_ticks, baro.t_s, height), 3).tolist(),
         mount_deg=[np.round(recording.mount_angles_deg[ticks, k], 2).tolist() for k in range(3)],
+        vehicle_speed_mps=_latest(recording.vehicle_speed, t_ticks),
     )
+
+
+def _latest(readings: list[VehicleSpeedSample], t_s: np.ndarray) -> list[float]:
+    """The last reading at or before each time."""
+    if not readings:
+        return []
+    t, v = np.array([(r.t_s, r.speed_mps) for r in readings]).T
+    return np.round(v[np.maximum(np.searchsorted(t, t_s, side="right") - 1, 0)], 2).tolist()

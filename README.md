@@ -38,6 +38,7 @@ After changing any Pydantic model in the core, regenerate the UI's types with `c
 | `core/tunnelsim/` | Everything that matters: road, scenario, ground truth, sensors, estimators, evaluation. No UI code. |
 | `core/tunnelsim/run.py` | Plays one scenario end to end; the best place to start reading. |
 | `core/tunnelsim/estimators/map_filter.py` | The main estimator; its docstring lists every step it takes, including branch hypotheses at exits. |
+| `core/tunnelsim/sensors/addons.py` | The add-ons, switched on per scenario: the car's own speed reading and tunnel beacons. Each one on adds a "map filter + …" estimator. |
 | `core/tunnelsim/callouts.py` | What the driver hears: exit callouts and the missed-exit call, worked out the same way for every estimator. |
 | `core/tunnelsim/metrics.py` | Measuring a run: every metric per estimator, and where, when and in which phase it was worst. |
 | `core/tunnelsim/measure.py` | The measurement command: many seeds per scenario, written to a Markdown report. |
