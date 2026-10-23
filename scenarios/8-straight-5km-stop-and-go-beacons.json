@@ -1,7 +1,8 @@
 {
   "name": "8 · Straight 5 km + stop-and-go + beacons",
-  "description": "The fix for scenario 2: beacons every 35 m. (Beacons arrive later.)",
+  "description": "The fix for scenario 2: beacons every 35 m.",
   "seed": 8,
   "road": { "kind": "straight", "tunnel_length_m": 5000 },
-  "speed": { "kind": "stop_and_go", "speed_kmh": 80, "go_kmh": 30, "go_s": 20, "stop_s": 10 }
+  "speed": { "kind": "stop_and_go", "speed_kmh": 80, "go_kmh": 30, "go_s": 20, "stop_s": 10 },
+  "add_ons": { "beacons": {} }
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { Run } from "./api";
-import { GPS_COLOR, GPS_PHASE_COLORS, TRUTH_COLOR, bandColor, estimatorColor } from "./colors";
+import { BEACON_COLORS, GPS_COLOR, GPS_PHASE_COLORS, TRUTH_COLOR, bandColor, estimatorColor } from "./colors";
 
 type Props = { run: Run; frame: number; fromM: number; toM: number; label: string };
 
@@ -37,6 +37,15 @@ export default function RoadStrip({ run, frame, fromM, toM, label }: Props) {
     ctx.lineTo(x(Math.min(run.path_length_m, toM)), roadY);
     ctx.stroke();
 
+    // Beacons (add-on): a tick on the tunnel's top edge, green once heard, red if dead
+    const now = run.t_s[frame];
+    for (const b of run.beacons) {
+      if (b.s_m < fromM || b.s_m > toM) continue;
+      const heard = b.heard_t_s != null && b.heard_t_s <= now;
+      ctx.fillStyle = b.dead ? BEACON_COLORS.dead : heard ? BEACON_COLORS.heard : BEACON_COLORS.unheard;
+      ctx.fillRect(x(b.s_m) - 1, roadY - 14, 2, 6);
+    }
+
     // Exits: a short tick below the road; the planned one is labelled
     ctx.font = "11px system-ui";
     for (const exit of run.exits) {
@@ -50,9 +59,8 @@ export default function RoadStrip({ run, frame, fromM, toM, label }: Props) {
     }
 
     // GPS fixes from the last 5 s
-    const t = run.t_s[frame];
     for (const p of run.gps) {
-      if (p.t_s > t || p.t_s <= t - 5) continue;
+      if (p.t_s > now || p.t_s <= now - 5) continue;
       ctx.fillStyle = GPS_PHASE_COLORS[p.phase] ?? GPS_COLOR;
       dot(ctx, x(p.s_m), roadY, 3);
     }

@@ -90,6 +90,100 @@
   },
   "components": {
     "schemas": {
+      "AddOns": {
+        "properties": {
+          "vehicle_speed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VehicleSpeedSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "beacons": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BeaconSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "AddOns",
+        "description": "Off unless set. Each one switched on adds a copy of the map filter that also uses it."
+      },
+      "BeaconMark": {
+        "properties": {
+          "s_m": {
+            "type": "number",
+            "title": "S M"
+          },
+          "dead": {
+            "type": "boolean",
+            "title": "Dead"
+          },
+          "heard_t_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heard T S"
+          }
+        },
+        "type": "object",
+        "required": [
+          "s_m",
+          "dead",
+          "heard_t_s"
+        ],
+        "title": "BeaconMark",
+        "description": "A beacon on the driven path (add-on), and what happened when the car passed it."
+      },
+      "BeaconSpec": {
+        "properties": {
+          "spacing_m": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Spacing M",
+            "default": 35
+          },
+          "miss_rate": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Miss Rate",
+            "description": "Chance a pass goes unheard",
+            "default": 0.05
+          },
+          "position_noise_m": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Position Noise M",
+            "description": "Where along the road a pass is heard, 1 sigma around the beacon",
+            "default": 10
+          },
+          "dead": {
+            "items": {
+              "$ref": "#/components/schemas/DeadStretch"
+            },
+            "type": "array",
+            "title": "Dead",
+            "description": "Beacons in these stretches never answer",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "BeaconSpec"
+      },
       "Callout": {
         "properties": {
           "distance_m": {
@@ -200,6 +294,25 @@
         },
         "type": "object",
         "title": "Converge"
+      },
+      "DeadStretch": {
+        "properties": {
+          "start_m": {
+            "type": "number",
+            "title": "Start M"
+          },
+          "end_m": {
+            "type": "number",
+            "title": "End M"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start_m",
+          "end_m"
+        ],
+        "title": "DeadStretch",
+        "description": "A stretch of tunnel whose beacons are dead, in metres from the tunnel entrance."
       },
       "EstimateTrack": {
         "properties": {
@@ -1065,6 +1178,13 @@
             "type": "array",
             "title": "Exits"
           },
+          "beacons": {
+            "items": {
+              "$ref": "#/components/schemas/BeaconMark"
+            },
+            "type": "array",
+            "title": "Beacons"
+          },
           "missed_exit_t_s": {
             "anyOf": [
               {
@@ -1145,6 +1265,7 @@
           "tunnels",
           "shapes",
           "exits",
+          "beacons",
           "missed_exit_t_s",
           "t_s",
           "truth_s_m",
@@ -1328,6 +1449,10 @@
                 "optimism": 0.5
               }
             }
+          },
+          "add_ons": {
+            "$ref": "#/components/schemas/AddOns",
+            "default": {}
           }
         },
         "type": "object",
@@ -1440,6 +1565,13 @@
             },
             "type": "array",
             "title": "Mount Deg"
+          },
+          "vehicle_speed_mps": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Vehicle Speed Mps"
           }
         },
         "type": "object",
@@ -1447,7 +1579,8 @@
           "accel_mps2",
           "gyro_dps",
           "baro_height_m",
-          "mount_deg"
+          "mount_deg",
+          "vehicle_speed_mps"
         ],
         "title": "SensorTraces",
         "description": "What the phone recorded, averaged over each output tick so it can be plotted."
@@ -1743,6 +1876,44 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VehicleSpeedSpec": {
+        "properties": {
+          "k": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "K",
+            "description": "Scale: the car reads this many times its true speed",
+            "default": 1.03
+          },
+          "b_mps": {
+            "type": "number",
+            "title": "B Mps",
+            "description": "Offset added to every reading while moving",
+            "default": 0.3
+          },
+          "bend_mps": {
+            "type": "number",
+            "title": "Bend Mps",
+            "description": "Extra error at 100 km/h, growing with speed squared; the estimator doesn't model it",
+            "default": 0
+          },
+          "noise_mps": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Noise Mps",
+            "description": "1 sigma per reading",
+            "default": 0.1
+          },
+          "rate_hz": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Rate Hz",
+            "default": 10
+          }
+        },
+        "type": "object",
+        "title": "VehicleSpeedSpec"
       }
     }
   }

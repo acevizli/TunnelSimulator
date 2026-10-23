@@ -13,6 +13,11 @@ that number honest. Its state:
          acceleration into the forward one, which is what makes it learnable there.
     k_g  gyroscope scale error (fraction): the gyro reads every turn rate 1-2 % off,
          which matters in long tight curves, where turn rate is used to measure speed.
+    k_v  with the vehicle-speed add-on: the car reports (1 + k_v) × speed + b_v. Both are
+    b_v  learned only while GPS is trusted, and frozen in the tunnel: there the other
+         corrections share small errors of their own (the accelerometer's scale error)
+         that would teach them wrong. If the car drove only one speed before the tunnel,
+         the two can't be told apart; the band carries that doubt.
 
 Before the tunnel it works out how the phone sits in the car (alignment). At the
 tunnel entrance it redoes the alignment with everything seen so far and replays
@@ -30,12 +35,17 @@ Every 0.1 s:
   5. grade         climb rate (barometer) = speed × map grade. On a slope this measures speed.
   6. landmark      the gyro or barometer just saw a curve start or end, or a grade change,
                    that the map has nearby: this measures position.
+  7. vehicle speed (add-on) the car's own reading measures speed, through k_v and b_v.
 Whenever a GPS fix arrives:
-  7. GPS           checked against the prediction; never used inside a tunnel. Once
+  8. GPS           checked against the prediction; never used inside a tunnel. Once
                    inside, GPS is only trusted again after three fixes outside agree
                    with each other; the shown position then slides over, not jumps.
                    Ten agreeing fixes overrule the filter however sure it is, so it
                    can never get stuck believing something wrong.
+Whenever a beacon is heard (add-on):
+  9. beacon        the map says where it is: a position fix, checked against the prediction
+                   like GPS (a pass can be heard late). Three in a row that disagree with
+                   us overrule us. A beacon on another branch puts the car on that branch.
 
 Exits: where the road splits, the car could go either way, so the filter splits
 too. Shortly before its band reaches a split it starts a copy that follows the
@@ -58,7 +68,9 @@ from tunnelsim.estimators.estimate import Estimate
 from tunnelsim.estimators.kalman import Kalman
 from tunnelsim.estimators.landmarks import StepWatcher, find_landmarks
 from tunnelsim.road import STEP_M, Path, Road
-from tunnelsim.sensors.source import AccelSample, BaroSample, GnssFix, GyroSample, Sample
+from tunnelsim.sensors.addons import Beacon, on_path
+from tunnelsim.sensors.source import (AccelSample, BaroSample, BeaconSample, GnssFix, GyroSample, Sample,
+                                     VehicleSpeedSample)
 
 TICK_S = 0.1
 G = 9.80665
@@ -70,6 +82,8 @@ ACCEL_BIAS_PRIOR = 0.2  # m/s² (about 20 mg)
 GYRO_BIAS_PRIOR = 0.25 * DEG  # rad/s
 YAW_PRIOR = {True: 1 * DEG, False: 10 * DEG}  # alignment forward fitted from motion / assumed from the screen
 GYRO_SCALE_PRIOR = 0.01
+VEHICLE_SCALE_PRIOR = 0.05  # a car's speed reading is a few % off (tyre size, wear, pressure)...
+VEHICLE_OFFSET_PRIOR = 0.5  # m/s ...plus a small offset
 ACCEL_NOISE = 0.05  # m/s² per √Hz: sensor noise plus road vibration plus small misalignment
 ACCEL_BIAS_DRIFT = 2e-4  # m/s² per √s
 GYRO_BIAS_DRIFT = 2e-5  # rad/s per √s
@@ -83,6 +97,9 @@ CLIMB_RATE_NOISE = 0.07  # m/s, barometer over one second, allowing for pressure
 GPS_SPEED_NOISE = 0.3  # m/s
 MIN_GPS_SIGMA = 5.0  # m: never trust a fix more than this, whatever the phone claims
 LANDMARK_NOISE = {"curve": (3.0, 0.1), "grade": (3.0, 0.25)}  # m + s × speed: timing of the step
+VEHICLE_SPEED_NOISE = 0.15  # m/s, one reading
+BEACON_NOISE = 10.0  # m: where along the road a beacon is heard (field studies: 15-20 m median error)
+OVERRULING_BEACONS = 3  # this many in a row that disagree with us overrule our own belief
 
 SHIFT_RATE = 3 * DEG  # rad/s: the phone turning against the car faster than this means it moved
 SHIFT_BIAS_PER_RAD = 0.4  # m/s² of doubt about the forward bias per radian the phone tips
@@ -99,11 +116,13 @@ DROP_BELOW = 0.01  # a branch this many times less likely than the best is ruled
 
 
 class MapFilter:
-    name = "map filter"
-
-    def __init__(self, road: Road, planned_path: str):
+    def __init__(self, road: Road, planned_path: str, vehicle_speed: bool = False, beacons: list[Beacon] | None = None):
+        """`vehicle_speed` and `beacons` switch the add-ons on; `beacons` is the map's list of them."""
+        self.name = "map filter" + " + vehicle speed" * vehicle_speed + " + beacons" * (beacons is not None)
         self._road = road
         self._planned = planned_path
+        self._vehicle_speed = vehicle_speed
+        self._beacons = {b.id: b for b in beacons or []}
         self._tunnel_start = road.path(planned_path).tunnel_spans()[0].start_m
         self._recorded: list[Sample] = []  # everything seen until the final alignment
         self._ekf: _AlongTrackFilter | None = None
@@ -137,7 +156,7 @@ class MapFilter:
         fixes = [x for x in self._recorded if isinstance(x, GnssFix)]
         alignment = align(np.array([a.t_s for a in accel]), np.array([[a.x, a.y, a.z] for a in accel]),
                           fixes, self._road.path(self._planned))
-        self._ekf = _AlongTrackFilter(self._road, self._planned, alignment)
+        self._ekf = _AlongTrackFilter(self._road, self._planned, alignment, self._vehicle_speed, self._beacons)
         for sample in self._recorded:
             self._ekf.update(sample)
 
@@ -196,9 +215,15 @@ class MapFilter:
 class _AlongTrackFilter:
     """The Kalman filter itself, for one alignment."""
 
-    def __init__(self, road: Road, planned_path: str, alignment: Alignment):
+    def __init__(self, road: Road, planned_path: str, alignment: Alignment, vehicle_speed: bool,
+                 beacons: dict[str, Beacon]):
+        self._road = road
         self._paths = {p.name: p for p in road.paths()}
         self._alignment = alignment
+        self._uses_vehicle_speed = vehicle_speed
+        self._beacons = beacons
+        self._car_reading: VehicleSpeedSample | None = None  # the latest one, used at the end of the tick
+        self._beacons_disagreeing = 0
         self._kf: Kalman | None = None  # starts at the first GPS fix
         self._t = 0.0  # time of the state
         self._next_tick = 1
@@ -239,7 +264,8 @@ class _AlongTrackFilter:
 
     def branch_to(self, path: Path) -> "_AlongTrackFilter":
         """A copy of this filter that believes the car takes `path` where it splits off."""
-        shared_map = {id(p): p for p in self._paths.values()}  # the copy shares the map, not copies it
+        shared = [*self._paths.values(), self._road, self._beacons]  # the copy shares the map, not copies it
+        shared_map = {id(x): x for x in shared}
         twin = copy.deepcopy(self, shared_map)
         twin._follow(path)
         return twin
@@ -256,6 +282,10 @@ class _AlongTrackFilter:
                 self._add_baro(sample)
             case GnssFix():
                 self._gps(sample)
+            case VehicleSpeedSample() if self._uses_vehicle_speed:
+                self._car_reading = sample
+            case BeaconSample():
+                self._beacon(sample)
 
     # ---- every tick ------------------------------------------------------------------------
 
@@ -268,6 +298,7 @@ class _AlongTrackFilter:
         if self._kf is None or len(accel) == 0:
             self._t = t
             return
+        self._kf.frozen = [] if self._trusting_gps else _VEHICLE_SPEED_STATES
 
         turn_rate = float(gyro.mean(axis=0) @ self._alignment.up()) if len(gyro) else None
         phone_moved = self._follow_phone(gyro)                       # 1
@@ -282,6 +313,9 @@ class _AlongTrackFilter:
                 self._curve(turn_rate)
         self._grade(t)                                               # 5
         self._landmarks(t)                                           # 6
+        if self._car_reading is not None:                            # 7
+            self._car_speed(self._car_reading)
+            self._car_reading = None
 
         if self._path.in_tunnel(self._s):
             self._trusting_gps = False
@@ -291,7 +325,7 @@ class _AlongTrackFilter:
         if len(gyro) == 0:
             return False
         up = self._alignment.up()
-        s, v, _, b_g, _, k_g = self._kf.x
+        s, v, _, b_g, _, k_g, *_ = self._kf.x
         car_turn = ((1 + k_g) * v * self._path.lookup(self._path.curvature, s) + b_g) * up
         mean = gyro.mean(axis=0) - car_turn  # the phone's own rotation, on top of the car's
         tipping = np.linalg.norm(mean - (mean @ up) * up)
@@ -310,16 +344,17 @@ class _AlongTrackFilter:
     def _predict(self, accel: np.ndarray, t: float) -> None:
         dt = t - self._t
         self._t = t
-        s, v, b_a, b_g, yaw, k_g = self._kf.x
+        s, v, b_a, b_g, yaw, k_g, k_v, b_v = self._kf.x
         forward, left, _ = self._alignment.to_car(accel)
         a = forward - yaw * left - b_a - G * self._sin_slope(s)
         self._accel_now = a
-        x_next = np.array([s + v * dt + a * dt**2 / 2, max(v + a * dt, 0.0), b_a, b_g, yaw, k_g])  # cars don't reverse
-        F = np.eye(6)
+        x_next = np.array([s + v * dt + a * dt**2 / 2, max(v + a * dt, 0.0),  # cars don't reverse
+                           b_a, b_g, yaw, k_g, k_v, b_v])
+        F = np.eye(8)
         F[0, 1] = dt
         F[0, 2], F[1, 2] = -dt**2 / 2, -dt  # a bias error turns into speed and position error
         F[0, 4], F[1, 4] = -left * dt**2 / 2, -left * dt  # so does a yaw error, in proportion to the sideways push
-        Q = np.zeros((6, 6))
+        Q = np.zeros((8, 8))
         Q[:2, :2] = ACCEL_NOISE**2 * np.array([[dt**3 / 3, dt**2 / 2], [dt**2 / 2, dt]])
         Q[2, 2] = ACCEL_BIAS_DRIFT**2 * dt
         Q[3, 3] = GYRO_BIAS_DRIFT**2 * dt
@@ -331,20 +366,20 @@ class _AlongTrackFilter:
 
     def _score_turn(self, turn_rate: float) -> None:
         """Could this branch's map explain the turn rate, anywhere we might be?"""
-        _, v, _, b_g, _, k_g = self._kf.x
+        _, v, _, b_g, _, k_g, *_ = self._kf.x
         curvatures = self._band(self._path.curvature)
         k = np.abs(curvatures).max()
-        H = np.array([0, (1 + k_g) * k, 0, 1, 0, v * k])
+        H = np.array([0, (1 + k_g) * k, 0, 1, 0, v * k, 0, 0])
         sigma = np.sqrt(H @ self._kf.P @ H + TURN_RATE_NOISE**2)  # our doubt about speed, bias, scale + noise
         self._explain(turn_rate - b_g, (1 + k_g) * v * curvatures, sigma)
 
     def _curve(self, turn_rate: float) -> None:
-        s, v, _, b_g, _, k_g = self._kf.x
+        s, v, _, b_g, _, k_g, *_ = self._kf.x
         if v > 2:
             self._curve_steps.add(self._t, s, (turn_rate - b_g) / ((1 + k_g) * v))
         if np.ptp(self._band(self._path.curvature)) == 0:  # no curve starts or ends anywhere we might be
             k = float(self._path.lookup(self._path.curvature, s))
-            H = np.array([0, (1 + k_g) * k, 0, 1, 0, v * k])
+            H = np.array([0, (1 + k_g) * k, 0, 1, 0, v * k, 0, 0])
             self._kf.update(turn_rate, (1 + k_g) * v * k + b_g, H, TURN_RATE_NOISE**2)
 
     def _grade(self, t: float) -> None:
@@ -362,13 +397,22 @@ class _AlongTrackFilter:
         self._explain(climb, v * grades, sigma)
         slope = self._sin_slope(s - v * 0.5)
         if slope != 0 and np.ptp(self._band(self._path.grade)) == 0:
-            self._kf.update(climb, v * slope, np.array([0, slope, 0, 0, 0, 0.0]), CLIMB_RATE_NOISE**2)
+            self._kf.update(climb, v * slope, np.array([0, slope, 0, 0, 0, 0, 0, 0.0]), CLIMB_RATE_NOISE**2)
 
     def _explain(self, measured: float, allowed: np.ndarray, sigma: float) -> None:
         """Lower this hypothesis's weight by how far a reading falls outside everything its
         map allows anywhere we might be (`allowed`), in units of the reading's noise."""
         gap = max(allowed.min() - measured, measured - allowed.max(), 0.0)
         self.log_weight -= min(0.5 * (gap / sigma) ** 2, MAX_SURPRISE)
+
+    def _car_speed(self, reading: VehicleSpeedSample) -> None:
+        """What the car says its speed is, through its own scale error and offset."""
+        if reading.speed_mps == 0:
+            return  # only says the car is slower than walking pace; the stop detection does the rest
+        *_, k_v, b_v = self._kf.x
+        v = self._v - self._accel_now * (self._t - reading.t_s)  # the reading is up to a tick older than the state
+        H = np.array([0, 1 + k_v, 0, 0, 0, 0, v, 1])
+        self._kf.update(reading.speed_mps, (1 + k_v) * v + b_v, H, VEHICLE_SPEED_NOISE**2, gate=None)
 
     def _landmarks(self, t: float) -> None:
         search = max(4 * self._sigma, 50.0)
@@ -381,6 +425,25 @@ class _AlongTrackFilter:
             r = (base + per_speed * self._v) ** 2
             self._kf.update(landmark.s_m + travelled, self._s, _H_S, r, gate=4.0)
 
+    # ---- beacons ---------------------------------------------------------------------------
+
+    def _beacon(self, sample: BeaconSample) -> None:
+        beacon = self._beacons.get(sample.beacon_id)
+        if self._kf is None or beacon is None:
+            return
+        if not on_path(beacon, self._path.name, self._road):
+            self._follow(self._paths[beacon.path])  # the beacon is on another branch, so the car is too
+        s_heard = beacon.s_m + self._v * (self._t - sample.t_s)  # it was heard a moment after the state's time
+        r = BEACON_NOISE**2
+        if self._kf.update(s_heard, self._s, _H_S, r):
+            self._beacons_disagreeing = 0
+            return
+        self._beacons_disagreeing += 1
+        if self._beacons_disagreeing >= OVERRULING_BEACONS:
+            self._kf.P[0, 0] += (s_heard - self._s) ** 2  # our own position is no better than the gap
+            self._kf.update(s_heard, self._s, _H_S, r, gate=None)
+            self._beacons_disagreeing = 0
+
     # ---- GPS -------------------------------------------------------------------------------
 
     def _gps(self, fix: GnssFix) -> None:
@@ -388,8 +451,9 @@ class _AlongTrackFilter:
             s, _ = self._path.project(fix.x_m, fix.y_m)
             r = max(fix.accuracy_m, MIN_GPS_SIGMA) ** 2
             yaw_prior = YAW_PRIOR[self._alignment.from_motion]
-            P = np.diag([r, 0.5**2, ACCEL_BIAS_PRIOR**2, GYRO_BIAS_PRIOR**2, yaw_prior**2, GYRO_SCALE_PRIOR**2])
-            self._kf = Kalman(np.array([s, fix.speed_mps, 0.0, 0.0, 0.0, 0.0]), P)
+            P = np.diag([r, 0.5**2, ACCEL_BIAS_PRIOR**2, GYRO_BIAS_PRIOR**2, yaw_prior**2, GYRO_SCALE_PRIOR**2,
+                         VEHICLE_SCALE_PRIOR**2, VEHICLE_OFFSET_PRIOR**2])
+            self._kf = Kalman(np.array([s, fix.speed_mps, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), P)
             self._t = fix.t_s
             return
 
@@ -509,5 +573,6 @@ class _AlongTrackFilter:
                         sigma_m=float(np.sqrt(self._kf.P[0, 0] + still_off**2)))
 
 
-_H_S = np.array([1.0, 0, 0, 0, 0, 0])  # measures position
-_H_V = np.array([0, 1.0, 0, 0, 0, 0])  # measures speed
+_H_S = np.array([1.0, 0, 0, 0, 0, 0, 0, 0])  # measures position
+_H_V = np.array([0, 1.0, 0, 0, 0, 0, 0, 0])  # measures speed
+_VEHICLE_SPEED_STATES = [6, 7]  # k_v, b_v

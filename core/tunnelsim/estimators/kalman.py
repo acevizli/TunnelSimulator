@@ -8,6 +8,10 @@ unsure we are about each part of it, and how those doubts are linked).
            and move the belief toward it, weighted by how much each is trusted.
 
 Every measurement here is a single number, which keeps the algebra to a few lines.
+
+Parts of the state can be `frozen`: measurements then leave them as they are,
+but their doubt still counts (a "consider" update). The map filter freezes
+what it may only learn from GPS while GPS is gone.
 """
 
 import numpy as np
@@ -17,6 +21,7 @@ class Kalman:
     def __init__(self, x: np.ndarray, P: np.ndarray):
         self.x = np.asarray(x, dtype=float)
         self.P = np.asarray(P, dtype=float)
+        self.frozen: list[int] = []  # indices of the state that updates must not change
 
     def predict(self, x_next: np.ndarray, F: np.ndarray, Q: np.ndarray) -> None:
         """`x_next` is where the motion model moves the state; `F` is how it moves
@@ -40,7 +45,8 @@ class Kalman:
         if gate is not None and y * y > gate * gate * S:
             return False
         K = self.P @ H / S  # Kalman gain: how much each state moves per unit of surprise
+        K[self.frozen] = 0.0
         self.x = self.x + K * y
         I_KH = np.eye(len(self.x)) - np.outer(K, H)
-        self.P = I_KH @ self.P @ I_KH.T + r * np.outer(K, K)  # "Joseph form": stays symmetric and positive
+        self.P = I_KH @ self.P @ I_KH.T + r * np.outer(K, K)  # "Joseph form": right for any gain, frozen or not
         return True

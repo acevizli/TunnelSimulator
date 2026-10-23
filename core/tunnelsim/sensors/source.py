@@ -62,7 +62,23 @@ class GnssFix:
     accuracy_m: float  # the phone's own 1-sigma accuracy claim (not always honest)
 
 
-Sample = AccelSample | GyroSample | MagSample | BaroSample | GnssFix
+@dataclass(frozen=True)
+class VehicleSpeedSample:
+    """The car's own speed reading (add-on), with the car's own error in it."""
+
+    t_s: float
+    speed_mps: float
+
+
+@dataclass(frozen=True)
+class BeaconSample:
+    """A tunnel beacon was heard (add-on). Its id is looked up on the map for its position."""
+
+    t_s: float
+    beacon_id: str
+
+
+Sample = AccelSample | GyroSample | MagSample | BaroSample | GnssFix | VehicleSpeedSample | BeaconSample
 
 
 class SensorSource(Protocol):

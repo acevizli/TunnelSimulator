@@ -22,16 +22,16 @@ Phases: before the tunnel, entering (its first 200 m), inside, stopped, exiting 
 
 ## Summary: largest error inside
 
-| Scenario | baseline | map filter |
-|---|---|---|
-| 1 · Straight + free flow | 35 m / 61 m (worst 76 m, seed 8) | 7.2 m / 20 m (worst 21 m, seed 16) |
-| 2 · Straight 5 km + stop-and-go | 4248 m / 4329 m (worst 4331 m, seed 8) | 23 m / 54 m (worst 67 m, seed 5) |
-| 3 · Two exits + slowdown | 665 m / 713 m (worst 750 m, seed 7) | 12 m / 27 m (worst 31 m, seed 17) |
-| 4 · Fork + missed exit | 4999 m / 4999 m (worst 5000 m, seed 22) | 14 m / 26 m (worst 33 m, seed 18) |
-| 5 · Long grade + loose phone | 70 m / 137 m (worst 154 m, seed 8) | 9.0 m / 20 m (worst 23 m, seed 18) |
-| 6 · Spiral + free flow | 879 m / 991 m (worst 1005 m, seed 8) | 6.7 m / 23 m (worst 24 m, seed 19) |
-| 7 · Long grade + speed change + vehicle speed | 938 m / 1024 m (worst 1102 m, seed 22) | 10 m / 16 m (worst 17 m, seed 25) |
-| 8 · Straight 5 km + stop-and-go + beacons | 4248 m / 4329 m (worst 4331 m, seed 8) | 15 m / 50 m (worst 78 m, seed 23) |
+| Scenario | baseline | map filter | map filter + vehicle speed | map filter + beacons |
+|---|---|---|---|---|
+| 1 · Straight + free flow | 35 m / 61 m (worst 76 m, seed 8) | 7.2 m / 20 m (worst 21 m, seed 16) | – | – |
+| 2 · Straight 5 km + stop-and-go | 4248 m / 4329 m (worst 4331 m, seed 8) | 23 m / 54 m (worst 67 m, seed 5) | – | – |
+| 3 · Two exits + slowdown | 665 m / 713 m (worst 750 m, seed 7) | 12 m / 27 m (worst 31 m, seed 17) | – | – |
+| 4 · Fork + missed exit | 4999 m / 4999 m (worst 5000 m, seed 22) | 14 m / 26 m (worst 33 m, seed 18) | – | – |
+| 5 · Long grade + loose phone | 70 m / 137 m (worst 154 m, seed 8) | 9.0 m / 20 m (worst 23 m, seed 18) | – | – |
+| 6 · Spiral + free flow | 879 m / 991 m (worst 1005 m, seed 8) | 6.7 m / 23 m (worst 24 m, seed 19) | – | – |
+| 7 · Long grade + speed change + vehicle speed | 938 m / 1024 m (worst 1102 m, seed 22) | 10 m / 16 m (worst 17 m, seed 25) | 4.3 m / 6.7 m (worst 7.4 m, seed 25) | – |
+| 8 · Straight 5 km + stop-and-go + beacons | 4248 m / 4329 m (worst 4331 m, seed 8) | 15 m / 50 m (worst 78 m, seed 23) | – | 8.2 m / 10 m (worst 13 m, seed 14) |
 
 ## 1 · Straight + free flow
 
@@ -173,40 +173,54 @@ Six tight climbing turns: the most for curve and grade fixes to work with.
 
 ## 7 · Long grade + speed change + vehicle speed
 
-The vehicle-speed add-on's known failure: one speed before the tunnel is not enough to learn its error. (The add-on arrives later.)
+Vehicle speed learned at one speed before the tunnel (70 km/h) and used at 100 km/h inside: with one speed, its scale and offset can't be told apart.
 
 | Metric | Estimator | Median | 95th percentile | Worst | Worst run |
 |---|---|---|---|---|---|
 | largest error inside | baseline | 938 m | 1024 m | 1102 m | seed 22: behind, 6248 m along, t = 273.5 s, exiting |
 | largest error inside | map filter | 10 m | 16 m | 17 m | seed 25: ahead, 6250 m along, t = 273.6 s, exiting |
+| largest error inside | map filter + vehicle speed | 4.3 m | 6.7 m | 7.4 m | seed 25: ahead, 5666 m along, t = 252.6 s, inside |
 | largest error inside, % of tunnel | baseline | 21 % | 23 % | 24 % | seed 22: 6248 m along, t = 273.5 s, exiting |
 | largest error inside, % of tunnel | map filter | 0.2 % | 0.3 % | 0.4 % | seed 25: 6250 m along, t = 273.6 s, exiting |
+| largest error inside, % of tunnel | map filter + vehicle speed | 0.1 % | 0.1 % | 0.2 % | seed 25: 5666 m along, t = 252.6 s, inside |
 | error at the exit | baseline | 939 m | 1024 m | 1103 m | seed 22: behind, 6251 m along, t = 273.6 s, exiting |
 | error at the exit | map filter | 3.8 m | 12 m | 17 m | seed 25: ahead, 6252 m along, t = 273.7 s, exiting |
+| error at the exit | map filter + vehicle speed | 2.2 m | 4.1 m | 4.6 m | seed 18: behind, 6251 m along, t = 273.5 s, exiting |
 | honesty | map filter | 100 % | 100 % | 96 % | seed 18: furthest out: error 1.6× the band, 1750 m along, t = 90.0 s, entering |
+| honesty | map filter + vehicle speed | 100 % | 65 % | 53 % | seed 18: furthest out: error 1.8× the band, 1834 m along, t = 94.4 s, entering |
 | recovery after the exit | baseline | 3.7 s | 35.4 s | 35.5 s | seed 12: 7242 m along, t = 309.1 s, after the tunnel |
 | recovery after the exit | map filter | 0.0 s | 5.9 s | 6.8 s | seed 25: 6441 m along, t = 280.5 s, exiting |
+| recovery after the exit | map filter + vehicle speed | 0.0 s | 0.0 s | 0.0 s | seed 7: 6250 m along, t = 273.7 s, exiting |
 | largest jump | baseline | 940 m | 1047 m | 1086 m | seed 22: 6293 m along, t = 275.1 s, exiting |
 | largest jump | map filter | 5.1 m | 9.3 m | 10.0 m | seed 16: 3563 m along, t = 176.9 s, inside |
+| largest jump | map filter + vehicle speed | 2.9 m | 4.9 m | 6.1 m | seed 14: 6429 m along, t = 280.1 s, exiting |
 | branch decided | baseline | 576 m | 672 m | 761 m | seed 22: at the Exit split, 5211 m along, t = 236.2 s, inside |
 | branch decided | map filter | 9.6 m | 11 m | 11 m | seed 15: at the Exit split, 4461 m along, t = 209.2 s, inside |
+| branch decided | map filter + vehicle speed | 9.6 m | 11 m | 11 m | seed 15: at the Exit split, 4461 m along, t = 209.2 s, inside |
 | on the wrong branch | baseline | 0.0 s | 0.0 s | 0.0 s | seed 7 |
 | on the wrong branch | map filter | 0.0 s | 0.0 s | 0.0 s | seed 7 |
+| on the wrong branch | map filter + vehicle speed | 0.0 s | 0.0 s | 0.0 s | seed 7 |
 
 ## 8 · Straight 5 km + stop-and-go + beacons
 
-The fix for scenario 2: beacons every 35 m. (Beacons arrive later.)
+The fix for scenario 2: beacons every 35 m.
 
 | Metric | Estimator | Median | 95th percentile | Worst | Worst run |
 |---|---|---|---|---|---|
 | largest error inside | baseline | 4248 m | 4329 m | 4331 m | seed 8: ahead, 3669 m along, t = 390.3 s, stopped |
 | largest error inside | map filter | 15 m | 50 m | 78 m | seed 23: behind, 7000 m along, t = 1005.8 s, exiting |
+| largest error inside | map filter + beacons | 8.2 m | 10 m | 13 m | seed 14: behind, 2911 m along, t = 248.3 s, inside |
 | largest error inside, % of tunnel | baseline | 85 % | 87 % | 87 % | seed 8: 3669 m along, t = 390.3 s, stopped |
 | largest error inside, % of tunnel | map filter | 0.3 % | 1.0 % | 1.6 % | seed 23: 7000 m along, t = 1005.8 s, exiting |
+| largest error inside, % of tunnel | map filter + beacons | 0.2 % | 0.2 % | 0.3 % | seed 14: 2911 m along, t = 248.3 s, inside |
 | error at the exit | baseline | 999 m | 1000 m | 1000 m | seed 20: ahead, 7000 m along, t = 1005.3 s, exiting |
 | error at the exit | map filter | 15 m | 50 m | 78 m | seed 23: behind, 7001 m along, t = 1005.9 s, exiting |
+| error at the exit | map filter + beacons | 2.1 m | 4.2 m | 5.4 m | seed 20: ahead, 7000 m along, t = 1005.3 s, exiting |
 | honesty | map filter | 100 % | 100 % | 97 % | seed 18: furthest out: error 1.6× the band, 2000 m along, t = 90.0 s, entering |
+| honesty | map filter + beacons | 99 % | 90 % | 89 % | seed 18: furthest out: error 1.6× the band, 2000 m along, t = 90.0 s, entering |
 | recovery after the exit | baseline | 8.8 s | 35.9 s | 45.7 s | seed 18: 7967 m along, t = 1052.1 s, after the tunnel |
 | recovery after the exit | map filter | 6.5 s | 8.1 s | 8.1 s | seed 14: 7130 m along, t = 1014.3 s, exiting |
+| recovery after the exit | map filter + beacons | 0.0 s | 0.0 s | 0.0 s | seed 8: 7000 m along, t = 1006.0 s, exiting |
 | largest jump | baseline | 1010 m | 1023 m | 1033 m | seed 19: 7011 m along, t = 1008.1 s, exiting |
 | largest jump | map filter | 2.9 m | 5.7 m | 6.6 m | seed 17: 2224 m along, t = 115.2 s, stopped |
+| largest jump | map filter + beacons | 3.9 m | 6.0 m | 7.1 m | seed 17: 2224 m along, t = 115.2 s, stopped |

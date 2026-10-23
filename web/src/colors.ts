@@ -1,7 +1,10 @@
 export const TRUTH_COLOR = "#1f2937";
 export const GPS_COLOR = "#2563eb";
 export const ROUTE_COLOR = "#059669";
-const ESTIMATOR_COLORS: Record<string, string> = { baseline: "#ea580c", "map filter": "#7c3aed" };
+const ESTIMATOR_COLORS: Record<string, string> = {
+  baseline: "#ea580c", "map filter": "#7c3aed", "map filter + vehicle speed": "#0891b2", "map filter + beacons": "#db2777",
+};
+export const BEACON_COLORS = { heard: "#16a34a", unheard: "#9ca3af", dead: "#dc2626" };
 export const estimatorColor = (name: string) => ESTIMATOR_COLORS[name] ?? "#0891b2";
 
 // The estimator's colour, see-through, for its uncertainty band
