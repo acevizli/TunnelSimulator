@@ -34,7 +34,7 @@ The measurement command runs from the same image, writing its report into the cu
 docker run --rm -v "$PWD/results:/app/results" ghcr.io/acevizli/tunnelsimulator tunnelsim-measure
 ```
 
-The image is rebuilt and published from `main` by [.github/workflows/docker.yml](.github/workflows/docker.yml), for both Intel/AMD and ARM machines. To build it yourself: `docker build -t tunnelsimulator .`
+The image is rebuilt and published from `main` by [.github/workflows/docker.yml](.github/workflows/docker.yml), for both Intel/AMD and ARM machines. To build it yourself: `docker build -t tunnelsimulator .` (needs BuildKit, the default builder in Docker Desktop; elsewhere install the `buildx` plugin).
 
 ### For development
 
