@@ -35,6 +35,7 @@ class Route(BaseModel):
 
     planned_exit: str | None = Field(None, description="None = stay on the main road")
     missed_exit: bool = Field(False, description="The car drives past the planned exit")
+    callouts_m: list[float] = Field([400, 100], description="Announce the planned exit this far before it")
 
 
 class Scenario(BaseModel):

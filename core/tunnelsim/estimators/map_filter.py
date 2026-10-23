@@ -36,9 +36,20 @@ Whenever a GPS fix arrives:
                    with each other; the shown position then slides over, not jumps.
                    Ten agreeing fixes overrule the filter however sure it is, so it
                    can never get stuck believing something wrong.
+
+Exits: where the road splits, the car could go either way, so the filter splits
+too. Shortly before its band reaches a split it starts a copy that follows the
+other branch (a branch hypothesis). Each copy runs everything above against its
+own branch's map, and each tick loses weight by how badly its map explains what
+the gyro and barometer just measured: the turn rate and climb rate its branch
+allows anywhere we might be, against what was read. A copy a hundred times less
+likely than the best is dropped. Before any evidence, the branch the route takes
+is a little more likely. The estimate shown is the most likely copy's.
 """
 
+import copy
 from collections import deque
+from dataclasses import replace
 
 import numpy as np
 
@@ -80,6 +91,12 @@ AGREEING_FIXES = 3  # fixes that must agree before GPS is trusted again after a 
 OVERRULING_FIXES = 10  # this many agreeing fixes overrule our own belief, however sure it is
 BLEND_S = 1.5  # time constant of the slide over to GPS at the exit
 
+# Branch hypotheses
+SPLIT_AHEAD_M = 50.0  # start a copy for the other branch when our band gets this close to a split
+ROUTE_PRIOR = 0.7  # before any evidence, how likely the car follows its route at a split
+MAX_SURPRISE = 1.0  # the most one reading can count against a branch: one odd reading can't decide alone
+DROP_BELOW = 0.01  # a branch this many times less likely than the best is ruled out
+
 
 class MapFilter:
     name = "map filter"
@@ -91,10 +108,16 @@ class MapFilter:
         self._recorded: list[Sample] = []  # everything seen until the final alignment
         self._ekf: _AlongTrackFilter | None = None
         self._aligned = False
+        self._hypotheses: list[_AlongTrackFilter] = []  # after the final alignment: one per possible branch
+        self._considered = {planned_path}  # branches that have had a hypothesis, so none is started twice
 
     def update(self, sample: Sample) -> None:
         if self._aligned:
-            self._ekf.update(sample)
+            for hypothesis in self._hypotheses:
+                hypothesis.update(sample)
+            if isinstance(sample, AccelSample):
+                self._branch_out()
+                self._rule_out()
             return
         self._recorded.append(sample)
         if self._ekf is None:
@@ -106,6 +129,7 @@ class MapFilter:
             self._restart()  # final alignment from the whole drive before the tunnel
             self._aligned = True
             self._recorded = []
+            self._hypotheses = [self._ekf]
 
     def _restart(self) -> None:
         """Align from everything recorded so far, then replay it through a fresh filter."""
@@ -117,8 +141,56 @@ class MapFilter:
         for sample in self._recorded:
             self._ekf.update(sample)
 
+    # ---- branch hypotheses -------------------------------------------------------------------
+
+    def _branch_out(self) -> None:
+        """Start a hypothesis for every branch our band is about to reach."""
+        for hypothesis in list(self._hypotheses):
+            here, s, reach = hypothesis.path, hypothesis.s_m, 3 * hypothesis.sigma_m
+            for other in hypothesis.paths:
+                split = self._road.split_m(here.name, other.name)
+                if other.name in self._considered or split is None:
+                    continue
+                if s + reach + SPLIT_AHEAD_M >= split and s - reach < split:
+                    self._considered.add(other.name)
+                    stay, leave = self._route_odds(here.name, other.name, split)
+                    twin = hypothesis.branch_to(other)
+                    twin.log_weight = hypothesis.log_weight + np.log(leave)
+                    hypothesis.log_weight += np.log(stay)
+                    self._hypotheses.append(twin)
+
+    def _route_odds(self, here: str, other: str, split: float) -> tuple[float, float]:
+        """Prior chances of staying on `here` or taking `other` at their split: the one
+        that keeps to the planned route is a little more likely."""
+        def prior(path: str) -> float:
+            on_route = path == self._planned or self._road.split_m(path, self._planned) > split
+            return ROUTE_PRIOR if on_route else 1 - ROUTE_PRIOR
+        a, b = prior(here), prior(other)
+        return a / (a + b), b / (a + b)
+
+    def _rule_out(self) -> None:
+        """Drop hypotheses the evidence has ruled out, and duplicates (GPS can move one
+        hypothesis onto another's branch); keep the numbers small."""
+        by_weight = sorted(self._hypotheses, key=lambda h: -h.log_weight)
+        best = by_weight[0].log_weight
+        kept: dict[str, _AlongTrackFilter] = {}
+        for hypothesis in by_weight:
+            if hypothesis.log_weight - best >= np.log(DROP_BELOW):
+                kept.setdefault(hypothesis.path.name, hypothesis)
+        for hypothesis in kept.values():
+            hypothesis.log_weight -= best
+        self._hypotheses = list(kept.values())
+
     def estimate(self, t_s: float) -> Estimate | None:
-        return None if self._ekf is None else self._ekf.estimate(t_s)
+        if not self._aligned:
+            return None if self._ekf is None else self._ekf.estimate(t_s)
+        best = self._hypotheses[0]  # _rule_out keeps them most likely first
+        if len(self._hypotheses) == 1:
+            return best.estimate(t_s)
+        weights = np.exp([h.log_weight for h in self._hypotheses])
+        weights /= weights.sum()
+        branches = {h.path.name: round(float(w), 3) for h, w in zip(self._hypotheses, weights)}
+        return replace(best.estimate(t_s), branches=branches)
 
 
 class _AlongTrackFilter:
@@ -140,6 +212,7 @@ class _AlongTrackFilter:
         self._candidates: list[tuple[GnssFix, float, float, Path]] = []  # fixes waiting to agree: (fix, s, var, path)
         self._blend = (0.0, 0.0)  # (offset, since when) of the slide over to GPS
         self._accel_now = 0.0  # forward acceleration in the last tick, corrected
+        self.log_weight = 0.0  # how likely this branch hypothesis is (log, relative to the others)
         self._follow(self._paths[planned_path])
 
     def _follow(self, path: Path) -> None:
@@ -151,6 +224,25 @@ class _AlongTrackFilter:
     @property
     def s_m(self) -> float | None:
         return None if self._kf is None else float(self._kf.x[0])
+
+    @property
+    def sigma_m(self) -> float:
+        return self._sigma
+
+    @property
+    def path(self) -> Path:
+        return self._path
+
+    @property
+    def paths(self) -> list[Path]:
+        return list(self._paths.values())
+
+    def branch_to(self, path: Path) -> "_AlongTrackFilter":
+        """A copy of this filter that believes the car takes `path` where it splits off."""
+        shared_map = {id(p): p for p in self._paths.values()}  # the copy shares the map, not copies it
+        twin = copy.deepcopy(self, shared_map)
+        twin._follow(path)
+        return twin
 
     def update(self, sample: Sample) -> None:
         match sample:
@@ -177,12 +269,17 @@ class _AlongTrackFilter:
             self._t = t
             return
 
+        turn_rate = float(gyro.mean(axis=0) @ self._alignment.up()) if len(gyro) else None
         phone_moved = self._follow_phone(gyro)                       # 1
         self._predict(accel.mean(axis=0), t)                         # 2
         if self._standing_still():                                   # 3
             self._kf.update(0.0, self._v, _H_V, STOP_SPEED_NOISE**2, gate=None)
-        if len(gyro) and not phone_moved:                            # 4
-            self._curve(float(gyro.mean(axis=0) @ self._alignment.up()))
+        if turn_rate is not None:                                    # 4
+            # Scored even when the phone seems to have moved: a branch that needs the
+            # phone to keep turning in its holder is a poor explanation of the gyro.
+            self._score_turn(turn_rate)
+            if not phone_moved:
+                self._curve(turn_rate)
         self._grade(t)                                               # 5
         self._landmarks(t)                                           # 6
 
@@ -232,6 +329,15 @@ class _AlongTrackFilter:
         shaking = float(np.std(self._vertical)) if len(self._vertical) == self._vertical.maxlen else np.inf
         return shaking < STILL_VIBRATION and abs(self._accel_now) < STILL_ACCEL
 
+    def _score_turn(self, turn_rate: float) -> None:
+        """Could this branch's map explain the turn rate, anywhere we might be?"""
+        _, v, _, b_g, _, k_g = self._kf.x
+        curvatures = self._band(self._path.curvature)
+        k = np.abs(curvatures).max()
+        H = np.array([0, (1 + k_g) * k, 0, 1, 0, v * k])
+        sigma = np.sqrt(H @ self._kf.P @ H + TURN_RATE_NOISE**2)  # our doubt about speed, bias, scale + noise
+        self._explain(turn_rate - b_g, (1 + k_g) * v * curvatures, sigma)
+
     def _curve(self, turn_rate: float) -> None:
         s, v, _, b_g, _, k_g = self._kf.x
         if v > 2:
@@ -251,9 +357,18 @@ class _AlongTrackFilter:
         if t < self._next_climb_t:
             return
         self._next_climb_t = t + 1.0  # once a second, so the readings don't overlap
-        slope = self._sin_slope(s - v * 0.5)  # the fit is centred half a second back
+        grades = self._band(self._path.grade, centre=s - v * 0.5)  # the fit is centred half a second back
+        sigma = np.hypot(CLIMB_RATE_NOISE, np.sqrt(self._kf.P[1, 1]) * np.abs(grades).max())
+        self._explain(climb, v * grades, sigma)
+        slope = self._sin_slope(s - v * 0.5)
         if slope != 0 and np.ptp(self._band(self._path.grade)) == 0:
             self._kf.update(climb, v * slope, np.array([0, slope, 0, 0, 0, 0.0]), CLIMB_RATE_NOISE**2)
+
+    def _explain(self, measured: float, allowed: np.ndarray, sigma: float) -> None:
+        """Lower this hypothesis's weight by how far a reading falls outside everything its
+        map allows anywhere we might be (`allowed`), in units of the reading's noise."""
+        gap = max(allowed.min() - measured, measured - allowed.max(), 0.0)
+        self.log_weight -= min(0.5 * (gap / sigma) ** 2, MAX_SURPRISE)
 
     def _landmarks(self, t: float) -> None:
         search = max(4 * self._sigma, 50.0)
@@ -354,11 +469,12 @@ class _AlongTrackFilter:
     def _sigma(self) -> float:
         return float(np.sqrt(self._kf.P[0, 0]))
 
-    def _band(self, table: np.ndarray) -> np.ndarray:
+    def _band(self, table: np.ndarray, centre: float | None = None) -> np.ndarray:
         """Part of a per-metre map table covering everywhere we might be (±3 sigma)."""
+        centre = self._s if centre is None else centre
         last = len(table) - 1
-        lo = min(max(int((self._s - 3 * self._sigma) / STEP_M), 0), last)
-        hi = min(max(int((self._s + 3 * self._sigma) / STEP_M), 0), last)
+        lo = min(max(int((centre - 3 * self._sigma) / STEP_M), 0), last)
+        hi = min(max(int((centre + 3 * self._sigma) / STEP_M), 0), last)
         return table[lo : hi + 1]
 
     def _sin_slope(self, s: float) -> float:

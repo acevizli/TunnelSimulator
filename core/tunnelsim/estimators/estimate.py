@@ -12,6 +12,7 @@ class Estimate:
     s_m: float  # believed along-track distance on that path
     v_mps: float  # believed speed
     sigma_m: float | None  # 1-sigma along-track uncertainty; None if the estimator has no notion of it
+    branches: dict[str, float] | None = None  # while unsure which branch the car took: path -> probability
 
 
 class Estimator(Protocol):

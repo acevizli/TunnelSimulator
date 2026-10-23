@@ -97,8 +97,12 @@ An optional information source from outside the phone (vehicle speed, tunnel bea
 _Avoid_: Aid, plugin, extra sensor
 
 **Callout**:
-The moment the app announces an upcoming exit to the driver, triggered from the estimate.
+The moment the app announces an upcoming exit to the driver, triggered from the estimate. It fires when the cautious edge reaches the announced distance before the exit.
 _Avoid_: Instruction, alert, prompt
+
+**Cautious edge**:
+The far end of the uncertainty band in the direction of travel: the furthest along the car could reasonably already be. Callouts use it so they come early rather than late.
+_Avoid_: Upper bound, worst case
 
 **Beacon**:
 A short-range radio transmitter fixed at a known along-track distance on a tunnel wall; passing it gives a position fix. Used only as an add-on.
@@ -109,7 +113,7 @@ The speed the car itself reports to the phone, which carries its own systematic 
 _Avoid_: Odometry, wheel speed, speedometer
 
 **Branch hypothesis**:
-One candidate for which road the car is on after an exit, tracked until the evidence rules it out.
+One candidate for which road the car is on after an exit, tracked until the evidence rules it out. The app calls a missed exit only once the route's branch hypothesis has been ruled out.
 _Avoid_: Mode, track
 
 **Mounting**:
