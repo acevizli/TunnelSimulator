@@ -4,6 +4,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; }
 header { display: flex; align-items: center; gap: 12px; }
 h1 { font-size: 20px; margin: 8px 0; }
 .seed { color: #6b7280; font-variant-numeric: tabular-nums; }
+.seed input { width: 7em; margin-left: 0.3em; font: inherit; }
 .computing { display: inline-flex; align-items: center; gap: 8px; color: #4b5563; font-size: 14px; }
 .spinner { width: 16px; height: 16px; border: 2px solid #d1d5db; border-top-color: #4b5563; border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
