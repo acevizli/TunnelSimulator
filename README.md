@@ -16,6 +16,8 @@ A driver follows turn-by-turn directions on a phone. The road enters a long tunn
 2. Build a visual simulator: a road with a tunnel, one or more cars driving through it, the sensor data the phone would record, and the true position shown next to the estimate.
 3. Use the simulator to evaluate the approach: how well it works, where it breaks, and why.
 
+The write-up (approach, assumptions, simulation, results, limitations, next steps, AI usage) is [docs/write-up.pdf](docs/write-up.pdf); its source is [docs/write-up.md](docs/write-up.md).
+
 ## Running it
 
 Needs [uv](https://docs.astral.sh/uv/) and Node.js.
@@ -31,6 +33,8 @@ cd web && npm install && npm run dev                 # UI on http://localhost:51
 
 After changing any Pydantic model in the core, regenerate the UI's types with `cd web && npm run gen:api`.
 
+After editing `docs/write-up.md`, rebuild the PDF (uses the installed Google Chrome) with `uv run --with markdown --with playwright python docs/build_pdf.py`.
+
 ## Layout
 
 | Path | What lives there |
@@ -42,6 +46,7 @@ After changing any Pydantic model in the core, regenerate the UI's types with `c
 | `core/tunnelsim/callouts.py` | What the driver hears: exit callouts and the missed-exit call, worked out the same way for every estimator. |
 | `core/tunnelsim/metrics.py` | Measuring a run: every metric per estimator, and where, when and in which phase it was worst. |
 | `core/tunnelsim/measure.py` | The measurement command: many seeds per scenario, written to a Markdown report. |
+| `docs/` | The write-up (Markdown source and PDF), its build script, and the decision record (`docs/adr/`). |
 | `results/measurements.md` | The latest measurement report. Its worst seeds can be typed into the replay page. |
 | `server/` | Thin FastAPI layer: lists and saves scenarios, computes runs with their metrics. No logic. |
 | `web/` | React + TypeScript replay page: the replay, error plots, every metric (each worst value jumps to its moment), sensor plots and assumptions, and a scenario editor. Types generated from the server's schema. |
