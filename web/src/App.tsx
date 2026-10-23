@@ -17,6 +17,7 @@ export default function App() {
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [run, setRun] = useState<Run | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [computing, setComputing] = useState(false);
   const [frame, setFrame] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(10);
@@ -27,10 +28,14 @@ export default function App() {
 
   useEffect(() => {
     if (!scenario) return;
+    let latest = true; // a slower, older run must not replace the one asked for last
     setPlaying(false);
+    setComputing(true);
     computeRun(scenario)
-      .then((r) => { setRun(r); setFrame(0); })
-      .catch((e) => setError(String(e)));
+      .then((r) => { if (latest) { setRun(r); setFrame(0); } })
+      .catch((e) => latest && setError(String(e)))
+      .finally(() => latest && setComputing(false));
+    return () => { latest = false; };
   }, [scenario]);
 
   usePlayback(playing, speed, run, setFrame, () => setPlaying(false));
@@ -54,21 +59,22 @@ export default function App() {
   ] : [], [run]);
 
   if (error) return <main><p className="error">{error}</p></main>;
-  if (!scenario || !run) return <main><p>Computing run…</p></main>;
+  if (!scenario || !run) return <main><p className="computing"><span className="spinner" /> Computing run…</p></main>;
 
   const t = run.t_s[frame];
   const truthS = run.truth_s_m[frame];
   const newSeed = () => setScenario({ ...scenario, seed: Math.floor(Math.random() * 1_000_000) });
 
   return (
-    <main>
+    <main className={computing ? "busy" : ""}>
       <header>
         <select value={scenarios.findIndex((s) => s.name === scenario.name)}
           onChange={(e) => setScenario(scenarios[Number(e.target.value)])}>
           {scenarios.map((s, i) => <option key={s.name} value={i}>{s.name}</option>)}
         </select>
         <span className="seed">seed {scenario.seed}</span>
-        <button onClick={newSeed}>New seed</button>
+        <button onClick={newSeed} disabled={computing}>New seed</button>
+        {computing && <span className="computing"><span className="spinner" /> Computing run…</span>}
       </header>
       <p className="description">{scenario.description}</p>
 
