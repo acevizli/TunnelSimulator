@@ -1,0 +1,13 @@
+**/.venv
+**/__pycache__
+**/node_modules
+**/.DS_Store
+web/dist
+scenarios/saved
+.git
+.claude
+.pytest_cache
+docs
+research
+results
+tests
